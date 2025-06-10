@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Modal,
   Dimensions,
   Switch,
+  Share,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -45,6 +47,20 @@ import {
   ArrowUp,
   ArrowDown,
   Activity,
+  Download,
+  Upload,
+  Bell,
+  RefreshCw,
+  Database,
+  Trash2,
+  Edit3,
+  Copy,
+  Save,
+  Mail,
+  Phone,
+  MapPin,
+  Wifi,
+  WifiOff,
 } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../services/supabase';
@@ -72,6 +88,47 @@ interface AdminStats {
   averageSessionTime: number;
   supportTickets: number;
   systemUptime: number;
+}
+
+interface NotificationData {
+  id: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  action?: {
+    label: string;
+    onPress: () => void;
+  };
+}
+
+interface ExportOptions {
+  format: 'csv' | 'json' | 'pdf';
+  data: any[];
+  filename: string;
+  columns?: string[];
+}
+
+interface BulkAction {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  action: (selectedItems: string[]) => Promise<void>;
+}
+
+interface AdminAuditLog {
+  id: string;
+  admin_id: string;
+  admin_email: string;
+  action: string;
+  target_type: 'user' | 'asset' | 'kyc' | 'complaint' | 'subscription' | 'system';
+  target_id: string;
+  details: Record<string, any>;
+  timestamp: string;
+  ip_address: string;
+  user_agent: string;
 }
 
 interface PendingAsset extends Asset {
@@ -217,6 +274,15 @@ export default function AdminDashboardScreen() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Enhanced features state
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkActionMode, setBulkActionMode] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
+  const [lastSync, setLastSync] = useState<Date>(new Date());
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  
   // Modal states
   const [selectedAsset, setSelectedAsset] = useState<PendingAsset | null>(null);
   const [selectedKyc, setSelectedKyc] = useState<PendingKyc | null>(null);
@@ -230,6 +296,9 @@ export default function AdminDashboardScreen() {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
   
   // Filter states
   const [assetFilter, setAssetFilter] = useState('all');
@@ -246,7 +315,199 @@ export default function AdminDashboardScreen() {
     }
     
     loadDashboardData();
+    setupRealtimeUpdates();
+    checkConnectionStatus();
   }, [user]);
+
+  // Enhanced functionality methods
+  const setupRealtimeUpdates = useCallback(() => {
+    // Simulate real-time notifications
+    const interval = setInterval(() => {
+      const mockNotifications: NotificationData[] = [
+        {
+          id: Date.now().toString(),
+          type: 'info',
+          title: 'New Asset Submission',
+          message: 'A new asset has been submitted for review',
+          timestamp: new Date().toISOString(),
+          read: false,
+          action: {
+            label: 'Review',
+            onPress: () => setActiveTab('assets'),
+          },
+        },
+      ];
+      
+      if (Math.random() > 0.8) {
+        setNotifications(prev => [...mockNotifications, ...prev.slice(0, 9)]);
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkConnectionStatus = useCallback(() => {
+    // Simulate connection monitoring
+    const checkConnection = async () => {
+      try {
+        const { data, error } = await supabase.from('profiles').select('id').limit(1);
+        setConnectionStatus(error ? 'offline' : 'online');
+        if (!error) {
+          setLastSync(new Date());
+        }
+      } catch (error) {
+        setConnectionStatus('offline');
+      }
+    };
+
+    checkConnection();
+    const interval = setInterval(checkConnection, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const logAdminAction = useCallback(async (
+    action: string,
+    targetType: AdminAuditLog['target_type'],
+    targetId: string,
+    details: Record<string, any> = {}
+  ) => {
+    try {
+      const auditLog: AdminAuditLog = {
+        id: Date.now().toString(),
+        admin_id: user?.id || '',
+        admin_email: user?.email || '',
+        action,
+        target_type: targetType,
+        target_id: targetId,
+        details,
+        timestamp: new Date().toISOString(),
+        ip_address: '192.168.1.1', // In production, get actual IP
+        user_agent: Platform.OS,
+      };
+
+      setAuditLogs(prev => [auditLog, ...prev.slice(0, 99)]); // Keep last 100 logs
+      
+      // In production, save to database
+      // await supabase.from('admin_audit_logs').insert(auditLog);
+    } catch (error) {
+      console.error('Error logging admin action:', error);
+    }
+  }, [user]);
+
+  const exportData = useCallback(async (options: ExportOptions) => {
+    try {
+      setExportLoading(true);
+      
+      let exportContent = '';
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `${options.filename}_${timestamp}`;
+
+      if (options.format === 'csv') {
+        // Convert data to CSV
+        const headers = options.columns || Object.keys(options.data[0] || {});
+        const csvHeaders = headers.join(',');
+        const csvData = options.data.map(item => 
+          headers.map(header => {
+            const value = item[header];
+            return typeof value === 'string' && value.includes(',') 
+              ? `"${value}"` 
+              : value;
+          }).join(',')
+        ).join('\n');
+        exportContent = `${csvHeaders}\n${csvData}`;
+      } else if (options.format === 'json') {
+        exportContent = JSON.stringify(options.data, null, 2);
+      }
+
+      // Use Share API for export
+      await Share.share({
+        message: exportContent,
+        title: `Export: ${filename}`,
+      });
+
+      await logAdminAction('export_data', 'system', filename, {
+        format: options.format,
+        recordCount: options.data.length,
+      });
+      
+      setNotifications(prev => [{
+        id: Date.now().toString(),
+        type: 'success',
+        title: 'Export Complete',
+        message: `Successfully exported ${options.data.length} records`,
+        timestamp: new Date().toISOString(),
+        read: false,
+      }, ...prev]);
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Export Failed', 'Unable to export data. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
+  }, [logAdminAction]);
+
+  const performBulkAction = useCallback(async (action: BulkAction) => {
+    try {
+      const selectedItemsArray = Array.from(selectedItems);
+      if (selectedItemsArray.length === 0) {
+        Alert.alert('No Items Selected', 'Please select items to perform bulk action.');
+        return;
+      }
+
+      Alert.alert(
+        'Confirm Bulk Action',
+        `Are you sure you want to ${action.label.toLowerCase()} ${selectedItemsArray.length} items?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Confirm',
+            style: 'destructive',
+            onPress: async () => {
+              await action.action(selectedItemsArray);
+              setSelectedItems(new Set());
+              setBulkActionMode(false);
+              
+              await logAdminAction('bulk_action', 'system', action.id, {
+                actionType: action.label,
+                itemCount: selectedItemsArray.length,
+                selectedItems: selectedItemsArray,
+              });
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      Alert.alert('Action Failed', 'Unable to perform bulk action. Please try again.');
+    }
+  }, [selectedItems, logAdminAction]);
+
+  const toggleItemSelection = useCallback((itemId: string) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const markNotificationAsRead = useCallback((notificationId: string) => {
+    setNotifications(prev => 
+      prev.map(notification => 
+        notification.id === notificationId 
+          ? { ...notification, read: true }
+          : notification
+      )
+    );
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
 
   const loadDashboardData = async () => {
     try {
@@ -1584,6 +1845,100 @@ export default function AdminDashboardScreen() {
     </View>
   );
 
+  // Helper functions for colors and status
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return '#EF4444';
+      case 'high': return '#F59E0B';
+      case 'medium': return '#3B82F6';
+      case 'low': return '#10B981';
+      default: return '#6B7280';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return '#EF4444';
+      case 'in_progress': return '#F59E0B';
+      case 'resolved': return '#10B981';
+      case 'closed': return '#6B7280';
+      default: return '#6B7280';
+    }
+  };
+
+  const getPlanColor = (plan: string) => {
+    switch (plan) {
+      case 'enterprise': return '#8B5CF6';
+      case 'premium': return '#F59E0B';
+      case 'pro': return '#3B82F6';
+      case 'basic': return '#10B981';
+      default: return '#6B7280';
+    }
+  };
+
+  const getSubscriptionStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return '#10B981';
+      case 'trial': return '#3B82F6';
+      case 'cancelled': return '#EF4444';
+      case 'expired': return '#6B7280';
+      case 'suspended': return '#F59E0B';
+      default: return '#6B7280';
+    }
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return '#EF4444';
+      case 'moderator': return '#F59E0B';
+      case 'premium_user': return '#8B5CF6';
+      case 'user': return '#10B981';
+      default: return '#6B7280';
+    }
+  };
+
+  const getAccountStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return '#10B981';
+      case 'suspended': return '#F59E0B';
+      case 'banned': return '#EF4444';
+      case 'pending_verification': return '#3B82F6';
+      default: return '#6B7280';
+    }
+  };
+
+  const getComplianceColor = (status: string) => {
+    switch (status) {
+      case 'good': return '#10B981';
+      case 'warning': return '#F59E0B';
+      case 'critical': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  const getComplianceStatusColor = (status: string) => {
+    switch (status) {
+      case 'compliant': return '#10B981';
+      case 'warning': return '#F59E0B';
+      case 'non_compliant': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  if (user?.role !== 'admin') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.accessDenied}>
+          <AlertCircle color={COLORS.TEXT_SECONDARY} size={64} />
+          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
+          <Text style={styles.accessDeniedText}>
+            You do not have permission to access the admin dashboard.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -1600,22 +1955,31 @@ export default function AdminDashboardScreen() {
         <Text style={styles.subtitle}>Manage platform operations</Text>
       </View>
 
-      {/* Tab Navigation */}
-      <View style={styles.tabNavigation}>
+      {/* Enhanced Tab Navigation */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabNavigation}
+        contentContainerStyle={styles.tabNavigationContent}
+      >
         {[
           { key: 'overview', label: 'Overview', icon: TrendingUp },
           { key: 'assets', label: 'Assets', icon: Building },
           { key: 'kyc', label: 'KYC', icon: Shield },
           { key: 'users', label: 'Users', icon: Users },
+          { key: 'complaints', label: 'Complaints', icon: MessageSquare },
+          { key: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
+          { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+          { key: 'compliance', label: 'Compliance', icon: FileText },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tabButton, activeTab === tab.key && styles.tabButtonActive]}
-            onPress={() => setActiveTab(tab.key as any)}
+            onPress={() => setActiveTab(tab.key as AdminTab)}
           >
             <tab.icon 
               color={activeTab === tab.key ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY} 
-              size={20} 
+              size={18} 
             />
             <Text style={[
               styles.tabButtonText,
@@ -1623,21 +1987,48 @@ export default function AdminDashboardScreen() {
             ]}>
               {tab.label}
             </Text>
+            {/* Badge for pending items */}
+            {tab.key === 'assets' && stats?.pendingAssets ? (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{stats.pendingAssets}</Text>
+              </View>
+            ) : null}
+            {tab.key === 'kyc' && stats?.pendingKyc ? (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{stats.pendingKyc}</Text>
+              </View>
+            ) : null}
+            {tab.key === 'complaints' && stats?.pendingComplaints ? (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{stats.pendingComplaints}</Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Tab Content */}
       {activeTab === 'overview' && renderOverviewTab()}
       {activeTab === 'assets' && renderAssetsTab()}
       {activeTab === 'kyc' && renderKycTab()}
-      {activeTab === 'users' && (
-        <View style={styles.tabContent}>
-          <Text style={styles.comingSoon}>User management coming soon...</Text>
-        </View>
-      )}
+      {activeTab === 'users' && renderUsersTab()}
+      {activeTab === 'complaints' && renderComplaintsTab()}
+      {activeTab === 'subscriptions' && renderSubscriptionsTab()}
+      {activeTab === 'analytics' && renderAnalyticsTab()}
+      {activeTab === 'compliance' && renderComplianceTab()}
 
-      {/* Asset Detail Modal */}
+      {/* Enhanced Modals */}
+      {renderAssetModal()}
+      {renderKycModal()}
+      {renderComplaintModal()}
+      {renderSubscriptionModal()}
+      {renderUserModal()}
+    </SafeAreaView>
+  );
+
+  // Enhanced Modal Components
+  function renderAssetModal() {
+    return (
       <Modal
         visible={showAssetModal}
         animationType="slide"
@@ -1659,21 +2050,37 @@ export default function AdminDashboardScreen() {
                 {selectedAsset.description}
               </Text>
               
-              <View style={styles.assetDetailRow}>
-                <Text style={styles.detailLabel}>Type:</Text>
-                <Text style={styles.detailValue}>{selectedAsset.asset_type}</Text>
-              </View>
-              
-              <View style={styles.assetDetailRow}>
-                <Text style={styles.detailLabel}>Value:</Text>
-                <Text style={styles.detailValue}>
-                  ${selectedAsset.estimated_value.toLocaleString()}
-                </Text>
-              </View>
-              
-              <View style={styles.assetDetailRow}>
-                <Text style={styles.detailLabel}>Submitted by:</Text>
-                <Text style={styles.detailValue}>{selectedAsset.user_email}</Text>
+              <View style={styles.detailSection}>
+                <View style={styles.assetDetailRow}>
+                  <Text style={styles.detailLabel}>Type:</Text>
+                  <Text style={styles.detailValue}>{selectedAsset.asset_type}</Text>
+                </View>
+                
+                <View style={styles.assetDetailRow}>
+                  <Text style={styles.detailLabel}>Value:</Text>
+                  <Text style={styles.detailValue}>
+                    ${selectedAsset.estimated_value.toLocaleString()}
+                  </Text>
+                </View>
+                
+                <View style={styles.assetDetailRow}>
+                  <Text style={styles.detailLabel}>Risk Level:</Text>
+                  <View style={[styles.riskBadge, { backgroundColor: getPriorityColor(selectedAsset.risk_level || 'low') }]}>
+                    <Text style={styles.riskBadgeText}>{selectedAsset.risk_level?.toUpperCase() || 'LOW'}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.assetDetailRow}>
+                  <Text style={styles.detailLabel}>Submitted by:</Text>
+                  <Text style={styles.detailValue}>{selectedAsset.user_email}</Text>
+                </View>
+                
+                <View style={styles.assetDetailRow}>
+                  <Text style={styles.detailLabel}>Date:</Text>
+                  <Text style={styles.detailValue}>
+                    {new Date(selectedAsset.submitted_at).toLocaleDateString()}
+                  </Text>
+                </View>
               </View>
               
               <View style={styles.modalActions}>
@@ -1693,8 +2100,11 @@ export default function AdminDashboardScreen() {
           )}
         </SafeAreaView>
       </Modal>
+    );
+  }
 
-      {/* KYC Detail Modal */}
+  function renderKycModal() {
+    return (
       <Modal
         visible={showKycModal}
         animationType="slide"
@@ -1714,17 +2124,35 @@ export default function AdminDashboardScreen() {
               <Text style={styles.kycDetailName}>{selectedKyc.user_name}</Text>
               <Text style={styles.kycDetailEmail}>{selectedKyc.user_email}</Text>
               
-              <View style={styles.kycDetailRow}>
-                <Text style={styles.detailLabel}>Documents:</Text>
-                <Text style={styles.detailValue}>{selectedKyc.document_count} files</Text>
+              <View style={styles.detailSection}>
+                <View style={styles.kycDetailRow}>
+                  <Text style={styles.detailLabel}>Documents:</Text>
+                  <Text style={styles.detailValue}>{selectedKyc.document_count} files</Text>
+                </View>
+                
+                <View style={styles.kycDetailRow}>
+                  <Text style={styles.detailLabel}>Risk Score:</Text>
+                  <Text style={[styles.detailValue, { 
+                    color: (selectedKyc.risk_score || 0) > 70 ? '#EF4444' : '#10B981' 
+                  }]}>
+                    {selectedKyc.risk_score || 0}%
+                  </Text>
+                </View>
+                
+                <View style={styles.kycDetailRow}>
+                  <Text style={styles.detailLabel}>Submitted:</Text>
+                  <Text style={styles.detailValue}>
+                    {new Date(selectedKyc.submitted_at).toLocaleDateString()}
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.kycDetailRow}>
-                <Text style={styles.detailLabel}>Submitted:</Text>
-                <Text style={styles.detailValue}>
-                  {new Date(selectedKyc.submitted_at).toLocaleDateString()}
-                </Text>
-              </View>
+              {selectedKyc.verification_notes && (
+                <View style={styles.notesSection}>
+                  <Text style={styles.notesTitle}>Verification Notes:</Text>
+                  <Text style={styles.notesText}>{selectedKyc.verification_notes}</Text>
+                </View>
+              )}
               
               <View style={styles.modalActions}>
                 <Button
@@ -1743,8 +2171,309 @@ export default function AdminDashboardScreen() {
           )}
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
-  );
+    );
+  }
+
+  function renderComplaintModal() {
+    return (
+      <Modal
+        visible={showComplaintModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowComplaintModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Complaint Details</Text>
+            <TouchableOpacity onPress={() => setShowComplaintModal(false)}>
+              <X color={COLORS.TEXT_SECONDARY} size={24} />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedComplaint && (
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.complaintModalHeader}>
+                <Text style={styles.complaintModalSubject}>{selectedComplaint.subject}</Text>
+                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(selectedComplaint.priority) }]}>
+                  <Text style={styles.priorityText}>{selectedComplaint.priority.toUpperCase()}</Text>
+                </View>
+              </View>
+              
+              <Text style={styles.complaintModalUser}>
+                From: {selectedComplaint.user_name} ({selectedComplaint.user_email})
+              </Text>
+              
+              <View style={styles.detailSection}>
+                <Text style={styles.complaintModalDescription}>{selectedComplaint.description}</Text>
+                
+                <View style={styles.complaintModalMeta}>
+                  <Text style={styles.metaLabel}>Category: {selectedComplaint.category}</Text>
+                  <Text style={styles.metaLabel}>Created: {new Date(selectedComplaint.created_at).toLocaleString()}</Text>
+                  <Text style={styles.metaLabel}>Assigned to: {selectedComplaint.assigned_to || 'Unassigned'}</Text>
+                  {selectedComplaint.response_time && (
+                    <Text style={styles.metaLabel}>Response time: {selectedComplaint.response_time}h</Text>
+                  )}
+                </View>
+              </View>
+              
+              <View style={styles.modalActions}>
+                <Button
+                  title="Mark as In Progress"
+                  onPress={() => handleComplaintStatusUpdate(selectedComplaint.id, 'in_progress')}
+                  style={[styles.modalButton, { backgroundColor: '#F59E0B' }]}
+                />
+                <Button
+                  title="Mark as Resolved"
+                  onPress={() => handleComplaintStatusUpdate(selectedComplaint.id, 'resolved')}
+                  style={[styles.modalButton, styles.approveButtonModal]}
+                />
+                <Button
+                  title="Close Complaint"
+                  onPress={() => handleComplaintStatusUpdate(selectedComplaint.id, 'closed')}
+                  variant="outline"
+                  style={styles.modalButton}
+                />
+              </View>
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
+  function renderSubscriptionModal() {
+    return (
+      <Modal
+        visible={showSubscriptionModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSubscriptionModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Subscription Management</Text>
+            <TouchableOpacity onPress={() => setShowSubscriptionModal(false)}>
+              <X color={COLORS.TEXT_SECONDARY} size={24} />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedSubscription && (
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.subscriptionModalHeader}>
+                <Text style={styles.subscriptionModalUser}>{selectedSubscription.user_name}</Text>
+                <View style={[styles.planBadge, { backgroundColor: getPlanColor(selectedSubscription.plan_type) }]}>
+                  <Crown color="#FFFFFF" size={16} />
+                  <Text style={styles.planText}>{selectedSubscription.plan_type.toUpperCase()}</Text>
+                </View>
+              </View>
+              
+              <Text style={styles.subscriptionModalEmail}>{selectedSubscription.user_email}</Text>
+              
+              <View style={styles.detailSection}>
+                <View style={styles.subscriptionModalRow}>
+                  <Text style={styles.detailLabel}>Amount:</Text>
+                  <Text style={styles.detailValue}>
+                    ${selectedSubscription.amount}/{selectedSubscription.plan_type === 'enterprise' ? 'year' : 'month'}
+                  </Text>
+                </View>
+                
+                <View style={styles.subscriptionModalRow}>
+                  <Text style={styles.detailLabel}>Payment Method:</Text>
+                  <Text style={styles.detailValue}>{selectedSubscription.payment_method}</Text>
+                </View>
+                
+                <View style={styles.subscriptionModalRow}>
+                  <Text style={styles.detailLabel}>Auto Renew:</Text>
+                  <Text style={styles.detailValue}>{selectedSubscription.auto_renew ? 'Yes' : 'No'}</Text>
+                </View>
+                
+                <View style={styles.subscriptionModalRow}>
+                  <Text style={styles.detailLabel}>Expires:</Text>
+                  <Text style={styles.detailValue}>
+                    {new Date(selectedSubscription.end_date).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.usageSection}>
+                <Text style={styles.usageSectionTitle}>Usage Statistics</Text>
+                <View style={styles.usageStats}>
+                  <View style={styles.usageStat}>
+                    <Text style={styles.usageStatValue}>{selectedSubscription.usage_stats.transactions}</Text>
+                    <Text style={styles.usageStatLabel}>Transactions</Text>
+                  </View>
+                  <View style={styles.usageStat}>
+                    <Text style={styles.usageStatValue}>{selectedSubscription.usage_stats.api_calls.toLocaleString()}</Text>
+                    <Text style={styles.usageStatLabel}>API Calls</Text>
+                  </View>
+                  <View style={styles.usageStat}>
+                    <Text style={styles.usageStatValue}>{selectedSubscription.usage_stats.storage_used}GB</Text>
+                    <Text style={styles.usageStatLabel}>Storage</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.modalActions}>
+                {selectedSubscription.status === 'active' && (
+                  <>
+                    <Button
+                      title="Suspend Subscription"
+                      onPress={() => handleSubscriptionAction(selectedSubscription.id, 'suspend')}
+                      style={[styles.modalButton, { backgroundColor: '#F59E0B' }]}
+                    />
+                    <Button
+                      title="Cancel Subscription"
+                      onPress={() => handleSubscriptionAction(selectedSubscription.id, 'cancel')}
+                      variant="outline"
+                      style={styles.modalButton}
+                    />
+                  </>
+                )}
+                {(selectedSubscription.status === 'suspended' || selectedSubscription.status === 'cancelled') && (
+                  <Button
+                    title="Reactivate Subscription"
+                    onPress={() => handleSubscriptionAction(selectedSubscription.id, 'reactivate')}
+                    style={[styles.modalButton, styles.approveButtonModal]}
+                  />
+                )}
+              </View>
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
+  function renderUserModal() {
+    return (
+      <Modal
+        visible={showUserModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowUserModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>User Management</Text>
+            <TouchableOpacity onPress={() => setShowUserModal(false)}>
+              <X color={COLORS.TEXT_SECONDARY} size={24} />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedUser && (
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.userModalHeader}>
+                <Text style={styles.userModalName}>{selectedUser.full_name}</Text>
+                <View style={[styles.roleBadge, { backgroundColor: getRoleColor(selectedUser.role) }]}>
+                  <Text style={styles.roleText}>{selectedUser.role.toUpperCase()}</Text>
+                </View>
+              </View>
+              
+              <Text style={styles.userModalEmail}>{selectedUser.email}</Text>
+              
+              <View style={styles.detailSection}>
+                <View style={styles.userModalRow}>
+                  <Text style={styles.detailLabel}>Account Status:</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getAccountStatusColor(selectedUser.account_status) }]}>
+                    <Text style={styles.statusText}>{selectedUser.account_status.replace('_', ' ').toUpperCase()}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.userModalRow}>
+                  <Text style={styles.detailLabel}>KYC Status:</Text>
+                  <Text style={styles.detailValue}>{selectedUser.kyc_status}</Text>
+                </View>
+                
+                <View style={styles.userModalRow}>
+                  <Text style={styles.detailLabel}>Total Investments:</Text>
+                  <Text style={styles.detailValue}>${selectedUser.total_investments.toLocaleString()}</Text>
+                </View>
+                
+                <View style={styles.userModalRow}>
+                  <Text style={styles.detailLabel}>Risk Score:</Text>
+                  <Text style={[styles.detailValue, { 
+                    color: selectedUser.risk_score > 70 ? '#EF4444' : '#10B981' 
+                  }]}>
+                    {selectedUser.risk_score}%
+                  </Text>
+                </View>
+                
+                <View style={styles.userModalRow}>
+                  <Text style={styles.detailLabel}>Login Count:</Text>
+                  <Text style={styles.detailValue}>{selectedUser.login_count}</Text>
+                </View>
+                
+                <View style={styles.userModalRow}>
+                  <Text style={styles.detailLabel}>Last Login:</Text>
+                  <Text style={styles.detailValue}>
+                    {new Date(selectedUser.last_login).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.securitySection}>
+                <Text style={styles.securitySectionTitle}>Security Features</Text>
+                <View style={styles.securityFeatures}>
+                  <View style={styles.securityFeature}>
+                    <Lock color={selectedUser.two_factor_enabled ? '#10B981' : '#6B7280'} size={16} />
+                    <Text style={styles.securityFeatureText}>
+                      Two-Factor Auth: {selectedUser.two_factor_enabled ? 'Enabled' : 'Disabled'}
+                    </Text>
+                  </View>
+                  <View style={styles.securityFeature}>
+                    <CheckCircle color={selectedUser.email_verified ? '#10B981' : '#6B7280'} size={16} />
+                    <Text style={styles.securityFeatureText}>
+                      Email Verified: {selectedUser.email_verified ? 'Yes' : 'No'}
+                    </Text>
+                  </View>
+                  <View style={styles.securityFeature}>
+                    <CheckCircle color={selectedUser.phone_verified ? '#10B981' : '#6B7280'} size={16} />
+                    <Text style={styles.securityFeatureText}>
+                      Phone Verified: {selectedUser.phone_verified ? 'Yes' : 'No'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.modalActions}>
+                {selectedUser.account_status === 'active' && (
+                  <Button
+                    title="Suspend User"
+                    onPress={() => handleUserStatusUpdate(selectedUser.id, 'suspended')}
+                    style={[styles.modalButton, { backgroundColor: '#F59E0B' }]}
+                  />
+                )}
+                {selectedUser.account_status === 'suspended' && (
+                  <Button
+                    title="Reactivate User"
+                    onPress={() => handleUserStatusUpdate(selectedUser.id, 'active')}
+                    style={[styles.modalButton, styles.approveButtonModal]}
+                  />
+                )}
+                <Button
+                  title="Update Role"
+                  onPress={() => {
+                    Alert.alert(
+                      'Update Role',
+                      'Select new role for user',
+                      [
+                        { text: 'User', onPress: () => handleRoleUpdate(selectedUser.id, 'user') },
+                        { text: 'Moderator', onPress: () => handleRoleUpdate(selectedUser.id, 'moderator') },
+                        { text: 'Admin', onPress: () => handleRoleUpdate(selectedUser.id, 'admin') },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                  }}
+                  variant="outline"
+                  style={styles.modalButton}
+                />
+              </View>
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
@@ -1768,36 +2497,61 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: COLORS.TEXT_SECONDARY,
   },
+  // Enhanced Tab Navigation
   tabNavigation: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
   },
+  tabNavigationContent: {
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
+  },
   tabButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xs,
-    borderRadius: 8,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 12,
     gap: SPACING.xs,
+    backgroundColor: '#FFFFFF',
+    marginRight: SPACING.sm,
+    minWidth: 100,
+    justifyContent: 'center',
+    position: 'relative',
   },
   tabButtonActive: {
     backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: COLORS.PRIMARY,
   },
   tabButtonText: {
-    fontSize: FONT_SIZES.xs,
+    fontSize: FONT_SIZES.sm,
     fontFamily: 'Inter-Medium',
     color: COLORS.TEXT_SECONDARY,
   },
   tabButtonTextActive: {
     color: COLORS.PRIMARY,
   },
+  tabBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 16,
+    alignItems: 'center',
+  },
+  tabBadgeText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
   tabContent: {
     flex: 1,
     paddingHorizontal: SPACING.lg,
   },
+  // Enhanced Stats Grid
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1808,6 +2562,7 @@ const styles = StyleSheet.create({
     width: '48%',
     alignItems: 'center',
     paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
   },
   statIcon: {
     width: 48,
@@ -1828,34 +2583,80 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
+    marginBottom: SPACING.xs,
   },
-  volumeCard: {
-    alignItems: 'center',
-    paddingVertical: SPACING.lg,
+  statSubLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  // Revenue Section
+  revenueSection: {
+    flexDirection: 'row',
+    gap: SPACING.md,
     marginBottom: SPACING.lg,
   },
-  volumeTitle: {
+  revenueCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.md,
+  },
+  revenueTitle: {
     fontSize: FONT_SIZES.md,
     fontFamily: 'Inter-Medium',
     color: COLORS.TEXT_SECONDARY,
     marginBottom: SPACING.xs,
   },
-  volumeValue: {
-    fontSize: FONT_SIZES.xxl,
+  revenueValue: {
+    fontSize: FONT_SIZES.xl,
     fontFamily: 'Inter-Bold',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: SPACING.sm,
   },
-  volumeChange: {
+  revenueChange: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
   },
-  volumeChangeText: {
+  revenueChangeText: {
     fontSize: FONT_SIZES.sm,
     fontFamily: 'Inter-SemiBold',
     color: '#10B981',
   },
+  // System Health
+  systemCard: {
+    marginBottom: SPACING.lg,
+  },
+  systemMetrics: {
+    gap: SPACING.md,
+  },
+  systemMetric: {
+    gap: SPACING.xs,
+  },
+  systemMetricHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  systemMetricLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  systemMetricValue: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  systemMetricBar: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#10B981',
+    marginTop: SPACING.xs,
+  },
+  // Quick Actions
   quickActionsCard: {
     marginBottom: SPACING.xl,
   },
@@ -1897,6 +2698,56 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
   },
+  // Filter Controls
+  filterContainer: {
+    marginBottom: SPACING.md,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  filterButton: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  filterButtonActive: {
+    backgroundColor: COLORS.PRIMARY,
+    borderColor: COLORS.PRIMARY,
+  },
+  filterButtonText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  filterButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  // Search
+  searchContainer: {
+    marginBottom: SPACING.md,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  // Asset Cards
   assetCard: {
     marginBottom: SPACING.md,
   },
@@ -1963,6 +2814,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
   },
+  // KYC Cards
   kycCard: {
     marginBottom: SPACING.md,
   },
@@ -1982,9 +2834,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: COLORS.TEXT_PRIMARY,
   },
-  kycDate: {
+  kycRiskBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+  },
+  kycRiskText: {
     fontSize: FONT_SIZES.xs,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-Medium',
     color: COLORS.TEXT_SECONDARY,
   },
   kycEmail: {
@@ -1997,12 +2855,442 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontFamily: 'Inter-Medium',
     color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  kycNotes: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    fontStyle: 'italic',
     marginBottom: SPACING.md,
   },
   kycActions: {
     flexDirection: 'row',
     gap: SPACING.sm,
   },
+  // Complaint Cards
+  complaintCard: {
+    marginBottom: SPACING.md,
+  },
+  complaintContent: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  complaintHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.xs,
+  },
+  complaintSubject: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    marginRight: SPACING.sm,
+  },
+  priorityBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+  },
+  priorityText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
+  complaintUser: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  complaintDescription: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  complaintFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  complaintDate: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  statusBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
+  responseTime: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  // Subscription Cards
+  subscriptionCard: {
+    marginBottom: SPACING.md,
+  },
+  subscriptionContent: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  subscriptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  subscriptionUser: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  planBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+    gap: SPACING.xs,
+  },
+  planText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
+  subscriptionEmail: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.md,
+  },
+  subscriptionDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  subscriptionAmount: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.PRIMARY,
+  },
+  subscriptionPayment: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  subscriptionUsage: {
+    marginBottom: SPACING.md,
+  },
+  usageLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  usageText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  subscriptionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  subscriptionDate: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  // User Cards
+  userCard: {
+    marginBottom: SPACING.md,
+  },
+  userContent: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  userName: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  roleBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+  },
+  roleText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
+  userEmail: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.md,
+  },
+  userStats: {
+    flexDirection: 'row',
+    gap: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  userStat: {
+    flex: 1,
+  },
+  userStatLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  userStatValue: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  userFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  userSecurityBadges: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  securityBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userLastLogin: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  // Analytics
+  analyticsCard: {
+    marginBottom: SPACING.lg,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+  },
+  metric: {
+    width: '48%',
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+  },
+  metricValue: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  metricLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  revenueChart: {
+    gap: SPACING.md,
+  },
+  revenueItem: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  revenueItemPeriod: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  revenueItemValue: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  revenueItemMargin: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  assetChart: {
+    gap: SPACING.md,
+  },
+  assetItem: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  assetItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  assetItemCategory: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  assetItemGrowth: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Bold',
+  },
+  assetItemVolume: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  assetItemCount: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  complianceMetrics: {
+    gap: SPACING.md,
+  },
+  complianceItem: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  complianceItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  complianceItemMetric: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  complianceTrend: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  complianceScore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  complianceScoreText: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    minWidth: 50,
+  },
+  complianceBar: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+  },
+  // Compliance Cards
+  complianceCard: {
+    marginBottom: SPACING.md,
+  },
+  complianceCardContent: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  complianceCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  complianceRegulation: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  complianceStatusBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+  },
+  complianceStatusText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
+  complianceAuditInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  complianceAuditLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  complianceAuditDate: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  complianceFindings: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.md,
+  },
+  complianceActions: {
+    backgroundColor: '#F3F4F6',
+    padding: SPACING.md,
+    borderRadius: 8,
+  },
+  complianceActionsTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
+  },
+  complianceActionItem: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  // Empty States
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -2047,6 +3335,7 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
   },
+  // Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -2069,6 +3358,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
+  },
+  detailSection: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   assetDetailTitle: {
     fontSize: FONT_SIZES.xl,
@@ -2101,6 +3396,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: COLORS.TEXT_PRIMARY,
   },
+  riskBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: 6,
+  },
+  riskBadgeText: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+  },
   kycDetailName: {
     fontSize: FONT_SIZES.xl,
     fontFamily: 'Inter-Bold',
@@ -2120,6 +3425,162 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  notesSection: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  notesTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
+  },
+  notesText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    lineHeight: 20,
+  },
+  // Complaint Modal
+  complaintModalHeader: {
+    marginBottom: SPACING.md,
+  },
+  complaintModalSubject: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
+  },
+  complaintModalUser: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.lg,
+  },
+  complaintModalDescription: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_PRIMARY,
+    lineHeight: 22,
+    marginBottom: SPACING.md,
+  },
+  complaintModalMeta: {
+    gap: SPACING.xs,
+  },
+  metaLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  // Subscription Modal
+  subscriptionModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  subscriptionModalUser: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  subscriptionModalEmail: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.lg,
+  },
+  subscriptionModalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  usageSection: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  usageSectionTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  usageStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  usageStat: {
+    alignItems: 'center',
+  },
+  usageStatValue: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  usageStatLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  // User Modal
+  userModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  userModalName: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: 'Inter-Bold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  userModalEmail: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.lg,
+  },
+  userModalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  securitySection: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  securitySectionTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  securityFeatures: {
+    gap: SPACING.sm,
+  },
+  securityFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  securityFeatureText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: 'Inter-Regular',
+    color: COLORS.TEXT_SECONDARY,
   },
   modalActions: {
     marginTop: SPACING.xl,
