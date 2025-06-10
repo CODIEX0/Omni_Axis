@@ -15,7 +15,13 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { store, persistor } from '../store';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import { ThirdwebProviderWrapper } from '../services/thirdweb';
+import Toast from 'react-native-toast-message';
 import '../i18n';
+
+// Import polyfills for React Native
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,15 +47,18 @@ export default function RootLayout() {
   }
 
   return (
-    <Provider store={store}>
-      <PersistGate loading={<LoadingSpinner message="Loading..." />} persistor={persistor}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
-      </PersistGate>
-    </Provider>
+    <ThirdwebProviderWrapper>
+      <Provider store={store}>
+        <PersistGate loading={<LoadingSpinner message="Loading..." />} persistor={persistor}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" />
+          <Toast />
+        </PersistGate>
+      </Provider>
+    </ThirdwebProviderWrapper>
   );
 }

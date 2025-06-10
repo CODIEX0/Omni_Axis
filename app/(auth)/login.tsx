@@ -11,33 +11,40 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { signIn } from '../../store/slices/authSlice';
+import { useAuth, SignInData } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useBiometric } from '../../hooks/useBiometric';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
-  const dispatch = useAppDispatch();
-  const { isLoading, error } = useTypedSelector(state => state.auth);
+  const { signIn, loading } = useAuth();
   const { isAvailable: biometricAvailable, authenticate } = useBiometric();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<SignInData>({
+    email: '',
+    password: '',
+  });
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!formData.email || !formData.password) {
       Alert.alert(t('common.error'), 'Please fill in all fields');
       return;
     }
 
     try {
-      await dispatch(signIn({ email, password })).unwrap();
-      router.replace('/(tabs)');
+      const { user, error } = await signIn(formData);
+      
+      if (error) {
+        Alert.alert(t('common.error'), error.message || 'Login failed');
+        return;
+      }
+
+      if (user) {
+        router.replace('/(tabs)');
+      }
     } catch (err) {
-      Alert.alert(t('common.error'), error || 'Login failed');
+      Alert.alert(t('common.error'), 'Login failed');
     }
   };
 
@@ -46,8 +53,14 @@ export default function LoginScreen() {
       const success = await authenticate();
       if (success) {
         // In a real app, you would use stored credentials or token
-        await dispatch(signIn({ email: 'biometric@user.com', password: 'biometric' })).unwrap();
-        router.replace('/(tabs)');
+        const { user, error } = await signIn({ 
+          email: 'biometric@user.com', 
+          password: 'biometric' 
+        });
+        
+        if (user) {
+          router.replace('/(tabs)');
+        }
       }
     } catch (err) {
       Alert.alert(t('common.error'), 'Biometric authentication failed');
@@ -78,8 +91,8 @@ export default function LoginScreen() {
           <View style={styles.form}>
             <Input
               label={t('auth.email')}
-              value={email}
-              onChangeText={setEmail}
+              value={formData.email}
+              onChangeText={(email) => setFormData({ ...formData, email })}
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -87,8 +100,8 @@ export default function LoginScreen() {
 
             <Input
               label={t('auth.password')}
-              value={password}
-              onChangeText={setPassword}
+              value={formData.password}
+              onChangeText={(password) => setFormData({ ...formData, password })}
               placeholder="Enter your password"
               secureTextEntry
             />
@@ -98,9 +111,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <Button
-              title={isLoading ? 'Signing In...' : t('auth.signIn')}
+              title={loading ? 'Signing In...' : t('auth.signIn')}
               onPress={handleLogin}
-              loading={isLoading}
+              loading={loading}
               fullWidth
             />
 
