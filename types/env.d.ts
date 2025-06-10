@@ -1,0 +1,20 @@
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      EXPO_PUBLIC_API_URL: string;
+      EXPO_PUBLIC_WEB3_PROVIDER_URL: string;
+      EXPO_PUBLIC_CHAINLINK_ORACLE_ADDRESS: string;
+      EXPO_PUBLIC_ASSET_TOKEN_FACTORY_ADDRESS: string;
+      EXPO_PUBLIC_MARKETPLACE_CONTRACT_ADDRESS: string;
+      EXPO_PUBLIC_IPFS_GATEWAY_URL: string;
+      EXPO_PUBLIC_KYC_PROVIDER_API_KEY: string;
+      EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID: string;
+      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: string;
+      EXPO_PUBLIC_MOONPAY_API_KEY: string;
+      EXPO_PUBLIC_SENTRY_DSN: string;
+      EXPO_PUBLIC_ANALYTICS_API_KEY: string;
+    }
+  }
+}
+
+export {};

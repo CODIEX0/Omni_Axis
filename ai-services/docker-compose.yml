@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Conversational AI Chatbot
+  chat-agent:
+    build: ./omni-axis-chat-agent
+    ports:
+      - "8001:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/omni_axis
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-jwt-secret
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./data/chat:/app/data
+
+  # Document NLP Agent
+  nlp-agent:
+    build: ./omni-axis-nlp-agent
+    ports:
+      - "8002:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/omni_axis
+      - JWT_SECRET=your-jwt-secret
+    volumes:
+      - ./data/uploads:/app/uploads
+      - ./data/models:/app/models
+
+  # Risk & Fraud Detection Agent
+  risk-agent:
+    build: ./omni-axis-risk-agent
+    ports:
+      - "8003:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/omni_axis
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-jwt-secret
+    volumes:
+      - ./data/models:/app/models
+
+  # Asset Authenticity & Valuation Agent
+  authenticity-agent:
+    build: ./omni-axis-authenticity-agent
+    ports:
+      - "8004:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/omni_axis
+      - JWT_SECRET=your-jwt-secret
+    volumes:
+      - ./data/assets:/app/assets
+      - ./data/models:/app/models
+
+  # KYC Automation Agent
+  kyc-agent:
+    build: ./omni-axis-kyc-agent
+    ports:
+      - "8005:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/omni_axis
+      - JWT_SECRET=your-jwt-secret
+    volumes:
+      - ./data/kyc:/app/kyc
+      - ./data/models:/app/models
+
+  # Smart Contract Generator Agent
+  contractgen-agent:
+    build: ./omni-axis-contractgen-agent
+    ports:
+      - "8006:8000"
+    environment:
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/omni_axis
+      - JWT_SECRET=your-jwt-secret
+    volumes:
+      - ./data/contracts:/app/contracts
+
+  # Supporting Services
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=omni_axis
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Ollama for local LLM inference
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
