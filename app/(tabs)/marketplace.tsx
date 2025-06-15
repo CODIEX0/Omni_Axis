@@ -19,6 +19,9 @@ import {
   Eye,
   Heart,
   ShoppingCart,
+  Palette,
+  Star,
+  Zap,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTokenizeAsset } from '../../hooks/useTokenizeAsset';
@@ -31,6 +34,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ASSET_TYPES, COLORS, SPACING, FONT_SIZES } from '../../constants';
+import { isLoading } from 'expo-font';
 
 export default function MarketplaceScreen() {
   const { t } = useTranslation();
@@ -64,7 +68,7 @@ export default function MarketplaceScreen() {
       Alert.alert('Error', 'Failed to load marketplace assets');
     } finally {
       setLoading(false);
-    }
+
   };
 
   const onRefresh = async () => {
@@ -287,6 +291,126 @@ export default function MarketplaceScreen() {
     </SafeAreaView>
   );
 }
+  }, [dispatch]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      dispatch(setSearchQuery(localSearchQuery));
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [localSearchQuery, dispatch]);
+
+  const categories = [
+    { id: 'all', name: t('marketplace.allAssets'), icon: Star, color: '#6B7280' },
+    { id: 'real-estate', name: t('marketplace.realEstate'), icon: Building, color: '#1E40AF' },
+    { id: 'art', name: t('marketplace.artCollectibles'), icon: Palette, color: '#8B5CF6' },
+    { id: 'commodities', name: t('marketplace.commodities'), icon: DollarSign, color: '#F59E0B' },
+    { id: 'luxury', name: t('marketplace.luxuryGoods'), icon: Zap, color: '#EF4444' },
+  ];
+
+  const handleCategorySelect = (categoryId: string) => {
+    dispatch(setFilters({ category: categoryId }));
+  };
+
+  const handleSortChange = (sortBy: string) => {
+    dispatch(setFilters({ sortBy: sortBy as any }));
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner message={t('common.loading')} />;
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>{t('marketplace.title')}</Text>
+        <TouchableOpacity style={styles.filterButton}>
+          <Filter color="#1F2937" size={20} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Search color="#6B7280" size={20} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('marketplace.searchAssets')}
+            value={localSearchQuery}
+            onChangeText={setLocalSearchQuery}
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+      </View>
+
+      {/* Categories */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoriesContainer}
+      >
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.categoryItem,
+              filters.category === category.id && styles.categoryItemActive
+            ]}
+            onPress={() => handleCategorySelect(category.id)}
+          >
+            <category.icon 
+              color={filters.category === category.id ? '#FFFFFF' : category.color} 
+              size={16} 
+            />
+            <Text style={[
+              styles.categoryText,
+              filters.category === category.id && styles.categoryTextActive
+            ]}>
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Sort Options */}
+      <View style={styles.sortContainer}>
+        <Text style={styles.resultCount}>
+          {t('marketplace.assetsFound', { count: filteredAssets.length })}
+        </Text>
+        <TouchableOpacity style={styles.sortButton}>
+          <Text style={styles.sortText}>
+            {filters.sortBy === 'trending' ? t('marketplace.trending') :
+             filters.sortBy === 'price-high' ? t('marketplace.priceHighToLow') :
+             filters.sortBy === 'price-low' ? t('marketplace.priceLowToHigh') :
+             filters.sortBy === 'roi' ? t('marketplace.roi') : t('marketplace.change')}
+          </Text>
+          <ChevronDown color="#6B7280" size={16} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Assets Grid */}
+      {error ? (
+        <ErrorMessage 
+          message={error} 
+          onRetry={() => dispatch(fetchMarketplaceAssets())} 
+        />
+      ) : (
+        <ScrollView style={styles.assetsContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.assetsGrid}>
+            {filteredAssets.map((asset) => (
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                onPress={() => {}}
+                variant="default"
+              />
+            ))}
+          </View>
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -297,189 +421,138 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   header: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
-  },
-  title: {
-    fontSize: FONT_SIZES.xxl,
-    fontFamily: 'Inter-Bold',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: 'Inter-Regular',
-    color: COLORS.TEXT_SECONDARY,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: FONT_SIZES.md,
-    fontFamily: 'Inter-Regular',
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.sm,
-  },
-  filterToggle: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filtersContainer: {
-    paddingHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  filtersContent: {
-    paddingBottom: SPACING.sm,
-    gap: SPACING.xs,
-  },
-  filterButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterButtonActive: {
-    backgroundColor: COLORS.PRIMARY,
-    borderColor: COLORS.PRIMARY,
-  },
-  filterButtonText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: 'Inter-Medium',
-    color: COLORS.TEXT_SECONDARY,
-  },
-  filterButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  walletBanner: {
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
-    backgroundColor: '#F0F7FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  walletBannerContent: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-  },
-  walletBannerTitle: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: 'Inter-SemiBold',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
-  },
-  walletBannerText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: 'Inter-Regular',
-    color: COLORS.TEXT_SECONDARY,
-  },
-  assetsList: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-  assetCard: {
-    marginBottom: SPACING.md,
-  },
-  assetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  assetTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontFamily: 'Inter-SemiBold',
-    color: COLORS.TEXT_PRIMARY,
-  },
-  assetType: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: 'Inter-Medium',
-    color: COLORS.TEXT_SECONDARY,
-    textTransform: 'capitalize',
-  },
-  assetPrice: {
-    alignItems: 'flex-end',
-  },
-  priceLabel: {
-    fontSize: FONT_SIZES.xs,
-    fontFamily: 'Inter-Regular',
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: 2,
-  },
-  priceValue: {
-    fontSize: FONT_SIZES.lg,
+  title: {
+    fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: COLORS.PRIMARY,
+    color: '#1F2937',
   },
-  assetDescription: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: 'Inter-Regular',
-    color: COLORS.TEXT_SECONDARY,
-    lineHeight: 20,
-    marginBottom: SPACING.md,
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  assetMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  metaItem: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  metaText: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: 'Inter-Medium',
-    color: COLORS.TEXT_SECONDARY,
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    marginLeft: 12,
   },
-  assetActions: {
+  categoriesContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  categoryItem: {
     flexDirection: 'row',
-    gap: SPACING.sm,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
   },
-  actionButton: {
+  categoryItemActive: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  categoryText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  categoryTextActive: {
+    color: '#FFFFFF',
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  resultCount: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
+  },
+  sortText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  assetsContainer: {
     flex: 1,
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.xl * 2,
+  assetsGrid: {
+    paddingHorizontal: 20,
+    gap: 16,
   },
-  emptyStateTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontFamily: 'Inter-SemiBold',
-    color: COLORS.TEXT_PRIMARY,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.xs,
-  },
-  emptyStateText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: 'Inter-Regular',
-    color: COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
+  bottomPadding: {
+    height: 20,
   },
 });
+
+function dispatch(arg0: any) {
+  throw new Error('Function not implemented.');
+}
+
+
+function setSearchQuery(localSearchQuery: any): any {
+  throw new Error('Function not implemented.');
+}
+
+
+function t(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+
+
+function setFilters(arg0: { category: string; sortBy?: string; }): any {
+  throw new Error('Function not implemented.');
+}

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Upload, Camera, FileText, DollarSign, CircleCheck as CheckCircle, ArrowRight, Building } from 'lucide-react-native';
+import { Upload, Camera, FileText, DollarSign, Users, Calendar, CircleCheck as CheckCircle, ArrowRight, Building, Palette, Zap, Info } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useWalletConnection } from '../../hooks/useWallet';
 import { useTokenizeAsset, TokenizeAssetData } from '../../hooks/useTokenizeAsset';
@@ -19,6 +19,7 @@ import { useCamera } from '../../hooks/useCamera';
 import { useDocumentPicker } from '../../hooks/useDocumentPicker';
 import { WalletConnector } from '../../components/WalletConnector';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ASSET_TYPES, COLORS, SPACING, FONT_SIZES } from '../../constants';
@@ -46,6 +47,8 @@ export default function TokenizeScreen() {
     'Media & Documents',
     'Review & Submit'
   ];
+
+  const assetTypes = ASSET_TYPES;
 
   const updateFormData = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -190,23 +193,26 @@ export default function TokenizeScreen() {
             </Text>
 
             <View style={styles.assetTypeGrid}>
-              {ASSET_TYPES.map((type) => (
+              {assetTypes.map((type) => (
                 <TouchableOpacity
-                  key={type.value}
+                  key={type.id}
                   style={[
                     styles.assetTypeCard,
-                    formData.assetType === type.value && styles.assetTypeCardActive
+                    formData.assetType === type.id && styles.assetTypeCardActive
                   ]}
-                  onPress={() => updateFormData('assetType', type.value)}
+                  onPress={() => updateFormData('assetType', type.id)}
                 >
-                  <View style={styles.assetTypeIcon}>
-                    <Building color="#FFFFFF" size={24} />
+                  <View style={[styles.assetTypeIcon, { backgroundColor: type.color }]}>
+                    <type.icon color="#FFFFFF" size={24} />
                   </View>
                   <Text style={[
                     styles.assetTypeName,
-                    formData.assetType === type.value && styles.assetTypeNameActive
+                    formData.assetType === type.id && styles.assetTypeNameActive
                   ]}>
-                    {type.label}
+                    {type.name}
+                  </Text>
+                  <Text style={styles.assetTypeDescription}>
+                    {type.description}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -251,24 +257,101 @@ export default function TokenizeScreen() {
                 />
               </View>
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Location (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.location}
-                onChangeText={(value) => updateFormData('location', value)}
-                placeholder="e.g., New York, NY"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
           </View>
         );
 
       case 1:
         return (
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Media & Documents</Text>
+            <Text style={styles.stepTitle}>Tokenization Parameters</Text>
+            <Text style={styles.stepDescription}>
+              Set the parameters for your token offering
+            </Text>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.label}>Token Price (USD) *</Text>
+                <View style={styles.inputWithIcon}>
+                  <DollarSign color="#6B7280" size={16} />
+                  <TextInput
+                    style={styles.inputWithIconText}
+                    value={formData.tokenPrice}
+                    onChangeText={(value) => updateFormData('tokenPrice', value)}
+                    placeholder="125.50"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.label}>Total Tokens *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.totalTokens}
+                  onChangeText={(value) => updateFormData('totalTokens', value)}
+                  placeholder="20,000"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Minimum Investment (USD) *</Text>
+              <View style={styles.inputWithIcon}>
+                <DollarSign color="#6B7280" size={20} />
+                <TextInput
+                  style={styles.inputWithIconText}
+                  value={formData.minimumInvestment}
+                  onChangeText={(value) => updateFormData('minimumInvestment', value)}
+                  placeholder="1,000"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputRow}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                <Text style={styles.label}>Expected ROI (%)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.expectedROI}
+                  onChangeText={(value) => updateFormData('expectedROI', value)}
+                  placeholder="8.5"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.label}>Duration (years)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.duration}
+                  onChangeText={(value) => updateFormData('duration', value)}
+                  placeholder="5"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.infoCard}>
+              <Info color="#1E40AF" size={20} />
+              <Text style={styles.infoText}>
+                These parameters will determine how your asset is divided into tokens and offered to investors. 
+                You can adjust these values based on market conditions and investment strategy.
+              </Text>
+            </View>
+          </View>
+        );
+
+      case 2:
+        return (
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Documentation</Text>
             <Text style={styles.stepDescription}>
               Upload supporting documents and images for your asset
             </Text>
@@ -276,30 +359,19 @@ export default function TokenizeScreen() {
             <View style={styles.uploadSection}>
               <Text style={styles.sectionTitle}>Asset Images</Text>
               <Text style={styles.sectionDescription}>
-                High-quality photos of your asset
+                High-quality photos of your asset (up to 10 images)
               </Text>
               
               <View style={styles.uploadGrid}>
-                <TouchableOpacity style={styles.uploadCard} onPress={handleTakePhoto}>
+                <TouchableOpacity style={styles.uploadCard}>
                   <Camera color="#6B7280" size={32} />
                   <Text style={styles.uploadCardText}>Take Photo</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.uploadCard} onPress={handleImagePick}>
+                <TouchableOpacity style={styles.uploadCard}>
                   <Upload color="#6B7280" size={32} />
                   <Text style={styles.uploadCardText}>Upload Images</Text>
                 </TouchableOpacity>
               </View>
-
-              {formData.images.length > 0 && (
-                <View style={styles.imagePreview}>
-                  <Text style={styles.previewTitle}>Selected Images ({formData.images.length})</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {formData.images.map((uri, index) => (
-                      <Image key={index} source={{ uri }} style={styles.previewImage} />
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
             </View>
 
             <View style={styles.uploadSection}>
@@ -308,7 +380,7 @@ export default function TokenizeScreen() {
                 Ownership certificates, valuations, legal documentation
               </Text>
               
-              <TouchableOpacity style={styles.documentUpload} onPress={handleDocumentPick}>
+              <TouchableOpacity style={styles.documentUpload}>
                 <FileText color="#1E40AF" size={24} />
                 <View style={styles.documentUploadContent}>
                   <Text style={styles.documentUploadTitle}>Upload Documents</Text>
@@ -318,104 +390,83 @@ export default function TokenizeScreen() {
                 </View>
                 <ArrowRight color="#6B7280" size={20} />
               </TouchableOpacity>
+            </View>
 
-              {formData.documents.length > 0 && (
-                <View style={styles.documentsList}>
-                  <Text style={styles.previewTitle}>Selected Documents ({formData.documents.length})</Text>
-                  {formData.documents.map((uri, index) => (
-                    <View key={index} style={styles.documentItem}>
-                      <FileText color="#6B7280" size={16} />
-                      <Text style={styles.documentName}>Document {index + 1}</Text>
-                    </View>
-                  ))}
+            <View style={styles.uploadSection}>
+              <Text style={styles.sectionTitle}>Valuation Report</Text>
+              <Text style={styles.sectionDescription}>
+                Professional appraisal or valuation report
+              </Text>
+              
+              <TouchableOpacity style={styles.documentUpload}>
+                <DollarSign color="#F59E0B" size={24} />
+                <View style={styles.documentUploadContent}>
+                  <Text style={styles.documentUploadTitle}>Upload Valuation</Text>
+                  <Text style={styles.documentUploadDescription}>
+                    Independent valuation or appraisal report
+                  </Text>
                 </View>
-              )}
+                <ArrowRight color="#6B7280" size={20} />
+              </TouchableOpacity>
             </View>
           </View>
         );
 
-      case 2:
+      case 3:
         return (
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Review & Submit</Text>
             <Text style={styles.stepDescription}>
-              Review your asset details before tokenization
+              Please review your tokenization request before submitting
             </Text>
 
-            <Card style={styles.reviewCard}>
-              <Text style={styles.reviewTitle}>Asset Summary</Text>
-              
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Asset Type:</Text>
+            <View style={styles.reviewCard}>
+              <Text style={styles.reviewCardTitle}>Asset Information</Text>
+              <View style={styles.reviewItem}>
+                <Text style={styles.reviewLabel}>Asset Type</Text>
                 <Text style={styles.reviewValue}>
-                  {ASSET_TYPES.find(t => t.value === formData.assetType)?.label || formData.assetType}
+                  {assetTypes.find(t => t.id === formData.assetType)?.name || 'Not specified'}
                 </Text>
               </View>
-
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Asset Name:</Text>
-                <Text style={styles.reviewValue}>{formData.assetName}</Text>
+              <View style={styles.reviewItem}>
+                <Text style={styles.reviewLabel}>Asset Name</Text>
+                <Text style={styles.reviewValue}>{formData.assetName || 'Not specified'}</Text>
               </View>
-
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Estimated Value:</Text>
-                <Text style={styles.reviewValue}>${formData.totalValue}</Text>
-              </View>
-
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Location:</Text>
-                <Text style={styles.reviewValue}>{formData.location || 'Not specified'}</Text>
-              </View>
-
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Images:</Text>
-                <Text style={styles.reviewValue}>{formData.images.length} uploaded</Text>
-              </View>
-
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewLabel}>Documents:</Text>
-                <Text style={styles.reviewValue}>{formData.documents.length} uploaded</Text>
-              </View>
-
-              <View style={styles.reviewDescription}>
-                <Text style={styles.reviewLabel}>Description:</Text>
-                <Text style={styles.reviewDescriptionText}>{formData.description}</Text>
-              </View>
-            </Card>
-
-            {/* Tokenization Status */}
-            {tokenizationStatus.step !== 'idle' && (
-              <Card style={styles.statusCard}>
-                <View style={styles.statusHeader}>
-                  <Text style={styles.statusTitle}>Tokenization Progress</Text>
-                  {tokenizationStatus.step === 'completed' && (
-                    <CheckCircle color="#10B981" size={20} />
-                  )}
-                </View>
-                <Text style={styles.statusMessage}>{tokenizationStatus.message}</Text>
-                {tokenizationStatus.progress > 0 && (
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[styles.progressFill, { width: `${tokenizationStatus.progress}%` }]} 
-                    />
-                  </View>
-                )}
-                {tokenizationStatus.error && (
-                  <Text style={styles.errorText}>{tokenizationStatus.error}</Text>
-                )}
-              </Card>
-            )}
-
-            {/* Wallet Connection */}
-            {!isConnected && (
-              <Card style={styles.walletCard}>
-                <Text style={styles.walletTitle}>Connect Wallet Required</Text>
-                <Text style={styles.walletDescription}>
-                  You need to connect your wallet to tokenize this asset.
+              <View style={styles.reviewItem}>
+                <Text style={styles.reviewLabel}>Total Value</Text>
+                <Text style={styles.reviewValue}>
+                  ${formData.totalValue ? parseInt(formData.totalValue).toLocaleString() : 'Not specified'}
                 </Text>
-                <WalletConnector />
-              </Card>
-            )}
+              </View>
+            </View>
+
+            <View style={styles.reviewCard}>
+              <Text style={styles.reviewCardTitle}>Token Parameters</Text>
+              <View style={styles.reviewItem}>
+                <Text style={styles.reviewLabel}>Token Price</Text>
+                <Text style={styles.reviewValue}>${formData.tokenPrice || 'Not specified'}</Text>
+              </View>
+              <View style={styles.reviewItem}>
+                <Text style={styles.reviewLabel}>Total Tokens</Text>
+                <Text style={styles.reviewValue}>
+                  {formData.totalTokens ? parseInt(formData.totalTokens).toLocaleString() : 'Not specified'}
+                </Text>
+              </View>
+              <View style={styles.reviewItem}>
+                <Text style={styles.reviewLabel}>Minimum Investment</Text>
+                <Text style={styles.reviewValue}>
+                  ${formData.minimumInvestment ? parseInt(formData.minimumInvestment).toLocaleString() : 'Not specified'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.submissionNote}>
+              <CheckCircle color="#10B981" size={24} />
+              <Text style={styles.submissionNoteText}>
+                Your tokenization request will be reviewed by our team within 48 hours. 
+                We'll contact you to discuss next steps and answer any questions.
+              </Text>
+            </View>
           </View>
         );
 
@@ -423,15 +474,6 @@ export default function TokenizeScreen() {
         return null;
     }
   };
-
-  // Show loading spinner during tokenization
-  if (tokenizationStatus.step === 'uploading' || tokenizationStatus.step === 'minting' || tokenizationStatus.step === 'saving') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <LoadingSpinner message={tokenizationStatus.message} />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -445,7 +487,7 @@ export default function TokenizeScreen() {
         </Text>
         
         <View style={styles.progressContainer}>
-          <View style={styles.progressBarContainer}>
+          <View style={styles.progressBar}>
             <View 
               style={[
                 styles.progressFill, 
@@ -465,21 +507,24 @@ export default function TokenizeScreen() {
 
       <View style={styles.buttonContainer}>
         {currentStep > 0 && (
-          <Button
-            title="Previous"
-            onPress={handleBack}
-            variant="outline"
-            style={styles.backButton}
-          />
+          <TouchableOpacity style={styles.backButton} onPress={handlePrevious}>
+            <Text style={styles.backButtonText}>Previous</Text>
+          </TouchableOpacity>
         )}
         
-        <Button
-          title={currentStep === steps.length - 1 ? 'Tokenize Asset' : 'Continue'}
+        <TouchableOpacity
+          style={[
+            styles.nextButton,
+            currentStep === 0 && { flex: 1 },
+            !canProceed() && styles.nextButtonDisabled
+          ]}
           onPress={handleNext}
-          disabled={!validateCurrentStep() || tokenizationStatus.step === 'uploading' || tokenizationStatus.step === 'minting'}
-          loading={tokenizationStatus.step === 'uploading' || tokenizationStatus.step === 'minting' || tokenizationStatus.step === 'saving'}
-          style={[styles.nextButton, currentStep === 0 && { flex: 1 }]}
-        />
+          disabled={!canProceed()}
+        >
+          <Text style={styles.nextButtonText}>
+            {currentStep === steps.length - 1 ? 'Submit Request' : 'Continue'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -488,32 +533,33 @@ export default function TokenizeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#F9FAFB',
   },
   header: {
-    paddingHorizontal: SPACING.LG,
-    paddingTop: SPACING.LG,
-    paddingBottom: SPACING.LG,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 24,
   },
   title: {
-    fontSize: FONT_SIZES.XXXL,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: FONT_SIZES.MD,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: SPACING.LG,
+    marginBottom: 24,
   },
   progressContainer: {
-    marginBottom: SPACING.SM,
+    marginBottom: 8,
   },
-  progressBarContainer: {
+  progressBar: {
     height: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 2,
-    marginBottom: SPACING.SM,
+    marginBottom: 12,
   },
   progressFill: {
     height: '100%',
@@ -521,86 +567,104 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progressText: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '500',
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
     textAlign: 'center',
   },
   content: {
     flex: 1,
-    paddingHorizontal: SPACING.LG,
-    paddingTop: SPACING.LG,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   stepContent: {
-    paddingBottom: SPACING.LG,
+    paddingBottom: 20,
   },
   stepTitle: {
-    fontSize: FONT_SIZES.XXL,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.SM,
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 8,
   },
   stepDescription: {
-    fontSize: FONT_SIZES.MD,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.XXL,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 32,
     lineHeight: 24,
   },
   assetTypeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.SM,
-    marginBottom: SPACING.XXL,
+    gap: 12,
+    marginBottom: 32,
   },
   assetTypeCard: {
     width: '48%',
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: SPACING.LG,
+    padding: 20,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.BORDER,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   assetTypeCardActive: {
-    borderColor: COLORS.PRIMARY,
+    borderColor: '#1E40AF',
     backgroundColor: '#F8FAFF',
   },
   assetTypeIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.SM,
+    marginBottom: 12,
   },
   assetTypeName: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
     textAlign: 'center',
   },
   assetTypeNameActive: {
-    color: COLORS.PRIMARY,
+    color: '#1E40AF',
+  },
+  assetTypeDescription: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 16,
   },
   inputGroup: {
-    marginBottom: SPACING.LG,
+    marginBottom: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    marginBottom: 20,
   },
   label: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '500',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.SM,
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    paddingHorizontal: SPACING.MD,
-    paddingVertical: SPACING.MD,
-    fontSize: FONT_SIZES.MD,
-    color: COLORS.TEXT_PRIMARY,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#E5E7EB',
   },
   textArea: {
     height: 120,
@@ -609,196 +673,187 @@ const styles = StyleSheet.create({
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    paddingHorizontal: SPACING.MD,
-    paddingVertical: SPACING.MD,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#E5E7EB',
   },
   inputWithIconText: {
     flex: 1,
-    fontSize: FONT_SIZES.MD,
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.SM,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    marginLeft: 12,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F7FF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginTop: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#1E40AF',
+    marginLeft: 12,
+    lineHeight: 20,
   },
   uploadSection: {
-    marginBottom: SPACING.XXL,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: FONT_SIZES.LG,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.SM,
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 8,
   },
   sectionDescription: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.MD,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 16,
     lineHeight: 20,
   },
   uploadGrid: {
     flexDirection: 'row',
-    gap: SPACING.SM,
+    gap: 12,
   },
   uploadCard: {
     flex: 1,
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: SPACING.LG,
+    padding: 24,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.BORDER,
+    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
   uploadCardText: {
-    fontSize: FONT_SIZES.SM,
-    fontWeight: '500',
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: SPACING.SM,
-  },
-  imagePreview: {
-    marginTop: SPACING.MD,
-  },
-  previewTitle: {
-    fontSize: FONT_SIZES.SM,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.SM,
-  },
-  previewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: SPACING.SM,
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginTop: 12,
   },
   documentUpload: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: SPACING.MD,
+    padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#E5E7EB',
   },
   documentUploadContent: {
     flex: 1,
-    marginLeft: SPACING.MD,
+    marginLeft: 16,
   },
   documentUploadTitle: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
     marginBottom: 4,
   },
   documentUploadDescription: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_SECONDARY,
-  },
-  documentsList: {
-    marginTop: SPACING.MD,
-  },
-  documentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.SM,
-  },
-  documentName: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.SM,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   reviewCard: {
-    marginBottom: SPACING.LG,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  reviewTitle: {
-    fontSize: FONT_SIZES.LG,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.MD,
+  reviewCardTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 16,
   },
-  reviewRow: {
+  reviewItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SPACING.SM,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#F3F4F6',
   },
   reviewLabel: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   reviewValue: {
-    fontSize: FONT_SIZES.SM,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
   },
-  reviewDescription: {
-    marginTop: SPACING.MD,
-  },
-  reviewDescriptionText: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_PRIMARY,
-    marginTop: SPACING.SM,
-    lineHeight: 20,
-  },
-  statusCard: {
-    marginBottom: SPACING.LG,
-    backgroundColor: '#F8FAFC',
-  },
-  statusHeader: {
+  submissionNote: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.SM,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
   },
-  statusTitle: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-  },
-  statusMessage: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.SM,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: COLORS.BORDER,
-    borderRadius: 2,
-    marginBottom: SPACING.SM,
-  },
-  errorText: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.ERROR,
-  },
-  walletCard: {
-    marginBottom: SPACING.LG,
-    backgroundColor: '#FFF7ED',
-  },
-  walletTitle: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '600',
-    color: '#EA580C',
-    marginBottom: SPACING.SM,
-  },
-  walletDescription: {
-    fontSize: FONT_SIZES.SM,
-    color: '#C2410C',
-    marginBottom: SPACING.MD,
+  submissionNoteText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    marginLeft: 12,
+    lineHeight: 20,
   },
   buttonContainer: {
     flexDirection: 'row',
-    paddingHorizontal: SPACING.LG,
-    paddingVertical: SPACING.LG,
-    paddingBottom: SPACING.XXL,
-    gap: SPACING.SM,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    paddingBottom: 40,
+    gap: 12,
   },
   backButton: {
     flex: 1,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#6B7280',
   },
   nextButton: {
     flex: 1,
+    backgroundColor: '#1E40AF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  nextButtonDisabled: {
+    opacity: 0.5,
+  },
+  nextButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
   },
 });

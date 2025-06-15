@@ -47,18 +47,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ThirdwebProviderWrapper>
-      <Provider store={store}>
-        <PersistGate loading={<LoadingSpinner message="Loading..." />} persistor={persistor}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
-          <Toast />
-        </PersistGate>
-      </Provider>
-    </ThirdwebProviderWrapper>
+    <Provider store={store}>
+      <PersistGate loading={<LoadingSpinner message="Loading..." />} persistor={persistor}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
+      </PersistGate>
+    </Provider>
   );
 }

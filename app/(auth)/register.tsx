@@ -15,20 +15,17 @@ import { ArrowLeft, Eye, EyeOff, Check } from 'lucide-react-native';
 import { useAuth, SignUpData } from '../../hooks/useAuth';
 
 export default function RegisterScreen() {
-  const { signUp, loading } = useAuth();
-  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '', 
     email: '',
     password: '',
     confirmPassword: '',
-    phoneNumber: '',
-    role: 'buyer' as 'buyer' | 'seller',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
@@ -41,48 +38,18 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
-      return;
-    }
-
     if (!agreeToTerms) {
       Alert.alert('Error', 'Please agree to the Terms of Service');
       return;
     }
 
-    try {
-      const signUpData: SignUpData = {
-        email: formData.email,
-        password: formData.password,
-        fullName: `${formData.firstName} ${formData.lastName}`,
-        phoneNumber: formData.phoneNumber || undefined,
-        role: formData.role,
-      };
-
-      const { user, error } = await signUp(signUpData);
-      
-      if (error) {
-        Alert.alert('Registration Failed', error.message || 'An error occurred during registration');
-        return;
-      }
-
-      if (user) {
-        Alert.alert(
-          'Registration Successful', 
-          'Please check your email to verify your account, then proceed with KYC verification.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.push('/(auth)/kyc'),
-            }
-          ]
-        );
-      }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
-      console.error('Registration error:', error);
-    }
+    setLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      router.push('/(auth)/kyc');
+    }, 1500);
   };
 
   const updateFormData = (field: string, value: string) => {

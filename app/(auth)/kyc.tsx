@@ -21,16 +21,11 @@ import { Button } from '../../components/ui/Button';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 
 export default function KYCScreen() {
-  const { user, updateProfile } = useAuth();
-  const { takePhoto, pickImage } = useCamera();
-  const { pickDocument } = useDocumentPicker();
-  
   const [currentStep, setCurrentStep] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState({
-    idDocument: null as string | null,
-    proofOfAddress: null as string | null,
-    selfie: null as string | null,
+    idDocument: false,
+    proofOfAddress: false,
+    selfie: false,
   });
 
   const steps = [
@@ -40,91 +35,22 @@ export default function KYCScreen() {
     'Review & Submit'
   ];
 
-  const handleDocumentUpload = async (docType: 'idDocument' | 'proofOfAddress' | 'selfie') => {
-    try {
-      setLoading(true);
-      let result;
-
-      if (docType === 'selfie') {
-        result = await takePhoto();
-      } else {
-        result = await pickDocument();
-      }
-
-      if (result?.uri) {
-        // Upload to IPFS
-        const fileName = `${docType}_${user?.id}_${Date.now()}`;
-        const ipfsHash = await ipfsService.uploadFile(result.uri, fileName);
-        const documentUrl = ipfsService.getIPFSUrl(ipfsHash);
-
-        // Save to Supabase
-        if (user) {
-          const { error } = await supabase
-            .from('kyc_documents')
-            .insert({
-              user_id: user.id,
-              document_type: docType === 'idDocument' ? 'national_id' : 
-                           docType === 'proofOfAddress' ? 'utility_bill' : 'selfie',
-              document_url: documentUrl,
-              verification_status: 'pending',
-            });
-
-          if (error) {
-            console.error('Error saving document:', error);
-            Alert.alert('Error', 'Failed to save document');
-            return;
-          }
-        }
-
-        // Update local state
-        setDocuments(prev => ({ ...prev, [docType]: documentUrl }));
-        Alert.alert('Success', 'Document uploaded successfully');
-      }
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      Alert.alert('Error', 'Failed to upload document');
-    } finally {
-      setLoading(false);
-    }
+  const handleDocumentUpload = (docType: string) => {
+    // Simulate document upload
+    setDocuments(prev => ({ ...prev, [docType]: true }));
+    Alert.alert('Success', 'Document uploaded successfully');
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       // Complete KYC process
-      try {
-        setLoading(true);
-        
-        // Update user profile KYC status
-        await updateProfile({ kyc_status: 'pending' });
-        
-        Alert.alert(
-          'KYC Submitted',
-          'Your documents are being reviewed. You will receive an email within 24 hours.',
-          [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-        );
-      } catch (error) {
-        console.error('Error submitting KYC:', error);
-        Alert.alert('Error', 'Failed to submit KYC documents');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const canProceed = () => {
-    switch (currentStep) {
-      case 0:
-        return documents.idDocument !== null;
-      case 1:
-        return documents.proofOfAddress !== null;
-      case 2:
-        return documents.selfie !== null;
-      case 3:
-        return documents.idDocument && documents.proofOfAddress && documents.selfie;
-      default:
-        return false;
+      Alert.alert(
+        'KYC Submitted',
+        'Your documents are being reviewed. You will receive an email within 24 hours.',
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+      );
     }
   };
 

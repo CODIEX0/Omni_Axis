@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  Clipboard,
+  Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Wallet, ExternalLink, Copy, Check, AlertCircle } from 'lucide-react-native';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -57,6 +58,7 @@ export function WalletConnector() {
     switchToPolygon,
     isOnCorrectNetwork,
     getFormattedAddress,
+    getConnectionStatusMessage,
   } = useWalletConnection();
 
   const handleConnect = async (walletId: string) => {
@@ -78,21 +80,24 @@ export function WalletConnector() {
     }
   };
 
-  const handleCopyAddress = () => {
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchToPolygon();
+    } catch (error) {
+      Alert.alert('Network Switch Failed', 'Could not switch to Polygon Mumbai.');
+    }
+  };
+
+  const copyAddress = async () => {
     if (address) {
-      Clipboard.setString(address);
+      await Clipboard.setStringAsync(address);
       setCopiedAddress(true);
       setTimeout(() => setCopiedAddress(false), 2000);
     }
   };
 
-  const handleSwitchNetwork = async () => {
-    try {
-      await switchToPolygon();
-    } catch (error) {
-      console.error('Error switching network:', error);
-      Alert.alert('Network Switch Failed', 'Failed to switch to Polygon network.');
-    }
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   if (isConnected && address) {
@@ -112,16 +117,14 @@ export function WalletConnector() {
                 )}
               </View>
             </View>
-            
             <View style={styles.connectedActions}>
-              <TouchableOpacity style={styles.copyButton} onPress={handleCopyAddress}>
+              <TouchableOpacity style={styles.copyButton} onPress={copyAddress}>
                 {copiedAddress ? (
                   <Check color="#10B981" size={16} />
                 ) : (
                   <Copy color="#6B7280" size={16} />
                 )}
               </TouchableOpacity>
-              
               <TouchableOpacity style={styles.disconnectButton} onPress={handleDisconnect}>
                 <Text style={styles.disconnectText}>Disconnect</Text>
               </TouchableOpacity>
@@ -201,10 +204,10 @@ export function WalletConnector() {
 
 const styles = StyleSheet.create({
   connectButton: {
-    marginVertical: SPACING.MD,
+    marginVertical: 16,
   },
   connectedCard: {
-    marginVertical: SPACING.MD,
+    marginVertical: 16,
     backgroundColor: '#F0FDF4',
     borderWidth: 1,
     borderColor: '#BBF7D0',
@@ -226,27 +229,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCFCE7',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.SM,
+    marginRight: 12,
   },
   connectedLabel: {
-    fontSize: FONT_SIZES.SM,
-    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
     color: '#166534',
   },
   connectedAddress: {
-    fontSize: FONT_SIZES.XS,
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
     color: '#16A34A',
-    marginTop: 2,
-  },
-  balanceText: {
-    fontSize: FONT_SIZES.XS,
-    color: '#059669',
     marginTop: 2,
   },
   connectedActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.SM,
+    gap: 8,
   },
   copyButton: {
     width: 32,
@@ -261,40 +260,15 @@ const styles = StyleSheet.create({
   disconnectButton: {
     backgroundColor: '#FEE2E2',
     borderRadius: 8,
-    paddingHorizontal: SPACING.SM,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
     borderColor: '#FECACA',
   },
   disconnectText: {
-    fontSize: FONT_SIZES.XS,
-    fontWeight: '600',
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
     color: '#DC2626',
-  },
-  warningCard: {
-    marginTop: SPACING.SM,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-  },
-  warningHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.SM,
-  },
-  warningTitle: {
-    fontSize: FONT_SIZES.SM,
-    fontWeight: '600',
-    color: '#92400E',
-    marginLeft: SPACING.SM,
-  },
-  warningText: {
-    fontSize: FONT_SIZES.SM,
-    color: '#B45309',
-    marginBottom: SPACING.MD,
-  },
-  switchButton: {
-    backgroundColor: '#F59E0B',
   },
   modal: {
     width: '100%',
@@ -302,30 +276,31 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     alignItems: 'center',
-    marginBottom: SPACING.LG,
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: FONT_SIZES.XXL,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.SM,
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 8,
   },
   modalSubtitle: {
-    fontSize: FONT_SIZES.MD,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
   },
   walletOptions: {
-    gap: SPACING.SM,
-    marginBottom: SPACING.LG,
+    gap: 12,
+    marginBottom: 24,
   },
   walletOption: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    padding: SPACING.MD,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -333,28 +308,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: SPACING.MD,
+    marginRight: 16,
   },
   walletOptionContent: {
     flex: 1,
   },
   walletOptionName: {
-    fontSize: FONT_SIZES.MD,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
     marginBottom: 4,
   },
   walletOptionDescription: {
-    fontSize: FONT_SIZES.SM,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   modalFooter: {
-    paddingTop: SPACING.MD,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
   footerText: {
-    fontSize: FONT_SIZES.XS,
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 18,

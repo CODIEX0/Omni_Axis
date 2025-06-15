@@ -111,9 +111,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <Button
-              title={loading ? 'Signing In...' : t('auth.signIn')}
+              title={isLoading ? 'Signing In...' : t('auth.signIn')}
               onPress={handleLogin}
-              loading={loading}
+              loading={isLoading}
               fullWidth
             />
 
