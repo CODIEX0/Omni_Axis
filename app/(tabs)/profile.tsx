@@ -12,20 +12,54 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { User, Settings, Shield, Bell, CircleHelp as HelpCircle, FileText, LogOut, ChevronRight, Star, Wallet, Globe, Moon, Smartphone, CreditCard, Lock, Eye, Download } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { useAuth } from '../../hooks/useAuth';
+import { KYCStatus } from '../../components/KYCStatus';
 
 export default function ProfileScreen() {
+  const { user, isDemoMode, demoAccount, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
 
+  const getUserProfile = () => {
+    if (isDemoMode && demoAccount) {
+      return {
+        name: `${demoAccount.profile.firstName} ${demoAccount.profile.lastName}`,
+        email: demoAccount.email,
+        memberSince: new Date(demoAccount.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        kycStatus: demoAccount.profile.kycStatus === 'verified' ? 'Verified' : 'Pending',
+        totalInvestments: demoAccount.portfolio?.totalValue || 0,
+        portfolioAssets: demoAccount.portfolio?.assets?.length || 0,
+        avatar: demoAccount.profile.profileImage,
+        role: demoAccount.role,
+      };
+    }
+    
+    return {
+      name: user?.email || 'User',
+      email: user?.email || '',
+      memberSince: 'Recently',
+      kycStatus: 'Pending',
+      totalInvestments: 0,
+      portfolioAssets: 0,
+      avatar: 'https://ui-avatars.com/api/?name=User&background=2196F3&color=fff',
+      role: 'user',
+    };
+  };
+
+  const userProfile = getUserProfile();
+
+  const { user } = useAuth();
+
   const userProfile = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    memberSince: 'January 2024',
-    kycStatus: 'Verified',
+    name: user?.name || 'John Doe',
+    email: user?.email || 'john.doe@example.com',
+    memberSince: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'January 2024',
+    kycStatus: user?.kycStatus || 'Verified',
     totalInvestments: 125480.50,
     portfolioAssets: 12,
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
+    avatar: user?.avatar || 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
   };
 
   const menuSections = [
@@ -33,7 +67,12 @@ export default function ProfileScreen() {
       title: 'Account',
       items: [
         { icon: User, label: 'Personal Information', action: () => {} },
-        { icon: Shield, label: 'KYC Verification', action: () => {}, badge: 'Verified' },
+        { 
+          icon: Shield, 
+          label: 'KYC Verification', 
+          action: () => router.push('/(auth)/kyc'), 
+          badge: userProfile.kycStatus 
+        },
         { icon: Wallet, label: 'Connected Wallets', action: () => {} },
         { icon: CreditCard, label: 'Payment Methods', action: () => {} },
       ]
@@ -87,13 +126,20 @@ export default function ProfileScreen() {
     }
   ];
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: () => {} }
+        { 
+          text: 'Sign Out', 
+          style: 'destructive', 
+          onPress: async () => {
+            await signOut();
+            router.replace('/(auth)');
+          }
+        }
       ]
     );
   };
@@ -173,6 +219,9 @@ export default function ProfileScreen() {
             </View>
           </View>
         </LinearGradient>
+
+        {/* KYC Status */}
+        <KYCStatus />
 
         {/* Menu Sections */}
         <View style={styles.content}>

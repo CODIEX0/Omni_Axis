@@ -48,11 +48,21 @@ A comprehensive blockchain-based platform for tokenizing and trading real-world 
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Configure Environment Variables**
+   Copy `.env.example` to `.env` and update the values:
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
    ```
+   
+   **Important**: Update the following keys for real KYC verification:
+   - `EXPO_PUBLIC_DIDIT_API_KEY`: Get your free API key from [Didit](https://didit.me) for real document scanning and facial recognition
+   - Other API keys as needed for full functionality
+   
+   The application uses **Didit's real KYC service** for:
+   - Document verification (passport, driver's license, ID cards)
+   - Biometric facial recognition and liveness detection
+   - Real-time identity verification with confidence scores
+   - No simulation - actual document OCR and face matching
 
 4. **Start the development server**
    ```bash

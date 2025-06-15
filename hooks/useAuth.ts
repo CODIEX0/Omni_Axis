@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '../services/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { demoAccountService, DemoAccount } from '../services/demoAccounts';
+import { freeKYCService } from '../services/freeKYC';
 
 export interface AuthState {
   user: User | null;
@@ -9,14 +11,19 @@ export interface AuthState {
   session: Session | null;
   loading: boolean;
   initialized: boolean;
+  isDemoMode: boolean;
+  demoAccount: DemoAccount | null;
 }
 
 export interface SignUpData {
   email: string;
   password: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phoneNumber?: string;
-  role?: 'buyer' | 'seller';
+  country?: string;
+  role?: 'admin' | 'issuer' | 'investor' | 'compliance' | 'support';
+  company?: string;
 }
 
 export interface SignInData {
@@ -31,13 +38,35 @@ export const useAuth = () => {
     session: null,
     loading: true,
     initialized: false,
+    isDemoMode: false,
+    demoAccount: null,
   });
 
   // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Get initial session
+        // Check for demo mode first
+        const demoMode = await AsyncStorage.getItem('demoMode');
+        const demoAccountId = await AsyncStorage.getItem('demoAccountId');
+        
+        if (demoMode === 'true' && demoAccountId) {
+          const demoAccount = demoAccountService.getAccountById(demoAccountId);
+          if (demoAccount) {
+            setAuthState({
+              user: null,
+              profile: null,
+              session: null,
+              loading: false,
+              initialized: true,
+              isDemoMode: true,
+              demoAccount,
+            });
+            return;
+          }
+        }
+
+        // Get initial session for regular auth
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -50,6 +79,8 @@ export const useAuth = () => {
             session,
             loading: false,
             initialized: true,
+            isDemoMode: false,
+            demoAccount: null,
           });
         } else {
           setAuthState(prev => ({
@@ -90,9 +121,13 @@ export const useAuth = () => {
             session: null,
             loading: false,
             initialized: true,
+            isDemoMode: false,
+            demoAccount: null,
           });
           // Clear stored data
           await AsyncStorage.removeItem('userProfile');
+          await AsyncStorage.removeItem('demoMode');
+          await AsyncStorage.removeItem('demoAccountId');
         }
       }
     );
@@ -145,9 +180,11 @@ export const useAuth = () => {
           .from('user_profiles')
           .insert({
             user_id: authData.user.id,
-            full_name: data.fullName,
+            full_name: `${data.firstName} ${data.lastName}`,
             phone_number: data.phoneNumber,
-            role: data.role || 'buyer',
+            country: data.country,
+            role: data.role || 'investor',
+            company: data.company,
             kyc_status: 'not_started',
           });
 
@@ -172,6 +209,35 @@ export const useAuth = () => {
     try {
       setAuthState(prev => ({ ...prev, loading: true }));
 
+      // Check if this is a demo account first
+      if (demoAccountService.isDemoAccount(data.email)) {
+        const demoAccount = demoAccountService.validateCredentials(data.email, data.password);
+        
+        if (demoAccount) {
+          // Store demo mode in AsyncStorage
+          await AsyncStorage.setItem('demoMode', 'true');
+          await AsyncStorage.setItem('demoAccountId', demoAccount.id);
+          
+          // Update last login
+          demoAccountService.updateLastLogin(data.email);
+          
+          setAuthState({
+            user: null,
+            profile: null,
+            session: null,
+            loading: false,
+            initialized: true,
+            isDemoMode: true,
+            demoAccount,
+          });
+
+          return { user: demoAccount as any, error: null };
+        } else {
+          return { user: null, error: new Error('Invalid demo account credentials') };
+        }
+      }
+
+      // Regular Supabase authentication
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -195,6 +261,26 @@ export const useAuth = () => {
     try {
       setAuthState(prev => ({ ...prev, loading: true }));
       
+      // Check if we're in demo mode
+      if (authState.isDemoMode) {
+        // Clear demo mode storage
+        await AsyncStorage.removeItem('demoMode');
+        await AsyncStorage.removeItem('demoAccountId');
+        
+        setAuthState({
+          user: null,
+          profile: null,
+          session: null,
+          loading: false,
+          initialized: true,
+          isDemoMode: false,
+          demoAccount: null,
+        });
+
+        return { error: null };
+      }
+
+      // Regular Supabase sign out
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -259,17 +345,88 @@ export const useAuth = () => {
 
   // Check if user is admin
   const isAdmin = () => {
+    if (authState.isDemoMode && authState.demoAccount) {
+      return authState.demoAccount.role === 'admin';
+    }
     return authState.profile?.role === 'admin';
   };
 
   // Check if user can tokenize assets
   const canTokenizeAssets = () => {
+    if (authState.isDemoMode && authState.demoAccount) {
+      return authState.demoAccount.role === 'issuer' && authState.demoAccount.profile.kycStatus === 'verified';
+    }
     return authState.profile?.role === 'seller' && authState.profile?.kyc_status === 'approved';
   };
 
   // Check if KYC is completed
-  const isKYCCompleted = () => {
+  const isKYCCompleted = async () => {
+    if (authState.isDemoMode && authState.demoAccount) {
+      return authState.demoAccount.profile.kycStatus === 'verified';
+    }
+    
+    if (authState.user) {
+      const userId = authState.user.id || authState.user.email || 'user';
+      return await freeKYCService.isKYCApproved(userId);
+    }
+    
     return authState.profile?.kyc_status === 'approved';
+  };
+
+  // Switch demo account
+  const switchDemoAccount = async (role: string) => {
+    if (!authState.isDemoMode) return { error: new Error('Not in demo mode') };
+    
+    const newAccount = demoAccountService.getAccountByRole(role);
+    if (!newAccount) return { error: new Error('Demo account not found') };
+
+    try {
+      await AsyncStorage.setItem('demoAccountId', newAccount.id);
+      demoAccountService.updateLastLogin(newAccount.email);
+      
+      setAuthState(prev => ({
+        ...prev,
+        demoAccount: newAccount,
+      }));
+
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  // Sign in with demo account directly
+  const signInWithDemoAccount = async (role: string) => {
+    const demoAccount = demoAccountService.getAccountByRole(role);
+    if (!demoAccount) return { user: null, error: new Error('Demo account not found') };
+
+    try {
+      setAuthState(prev => ({ ...prev, loading: true }));
+
+      await AsyncStorage.setItem('demoMode', 'true');
+      await AsyncStorage.setItem('demoAccountId', demoAccount.id);
+      demoAccountService.updateLastLogin(demoAccount.email);
+      
+      // Auto-approve KYC for demo accounts
+      await freeKYCService.autoApproveDemoAccount(demoAccount.id, demoAccount.role);
+      
+      setAuthState({
+        user: null,
+        profile: null,
+        session: null,
+        loading: false,
+        initialized: true,
+        isDemoMode: true,
+        demoAccount,
+      });
+
+      return { user: demoAccount as any, error: null };
+    } catch (error) {
+      console.error('Demo sign in error:', error);
+      return { user: null, error };
+    } finally {
+      setAuthState(prev => ({ ...prev, loading: false }));
+    }
   };
 
   return {
@@ -283,5 +440,8 @@ export const useAuth = () => {
     canTokenizeAssets,
     isKYCCompleted,
     loadUserProfile,
+    switchDemoAccount,
+    signInWithDemoAccount,
+    demoAccountService,
   };
 };

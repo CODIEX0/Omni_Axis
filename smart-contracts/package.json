@@ -14,20 +14,21 @@
     "lint:fix": "solhint 'contracts/**/*.sol' --fix"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
-    "@openzeppelin/contracts": "^5.0.1",
-    "@openzeppelin/contracts-upgradeable": "^5.0.1",
     "@chainlink/contracts": "^0.8.0",
-    "hardhat": "^2.19.4",
-    "hardhat-gas-reporter": "^1.0.9",
-    "solidity-coverage": "^0.8.5",
-    "solhint": "^4.1.1",
-    "@typechain/hardhat": "^9.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.3.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.1",
     "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "hardhat": "^2.19.4",
+    "hardhat-gas-reporter": "^1.0.10",
+    "solhint": "^4.1.1",
+    "solidity-coverage": "^0.8.16",
     "typechain": "^8.3.2"
   },
   "dependencies": {
-    "ethers": "^6.9.0",
-    "dotenv": "^16.3.1"
+    "@openzeppelin/hardhat-upgrades": "^3.9.0",
+    "dotenv": "^16.5.0",
+    "ethers": "^6.9.0"
   }
 }

@@ -1,0 +1,249 @@
+{
+  "demoAccounts": {
+    "admin": {
+      "id": "admin-001",
+      "email": "admin@omniaxis.com",
+      "password": "Admin123!",
+      "role": "admin",
+      "profile": {
+        "firstName": "System",
+        "lastName": "Administrator",
+        "phone": "+1-555-0001",
+        "country": "United States",
+        "kycStatus": "verified",
+        "kycLevel": "institutional",
+        "profileImage": "https://ui-avatars.com/api/?name=System+Administrator&background=2196F3&color=fff"
+      },
+      "walletAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "permissions": [
+        "user_management",
+        "contract_management",
+        "marketplace_admin",
+        "compliance_management",
+        "system_settings"
+      ],
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastLogin": "2025-06-15T10:00:00Z"
+    },
+    "issuer": {
+      "id": "issuer-001",
+      "email": "issuer@realestate.com",
+      "password": "Issuer123!",
+      "role": "issuer",
+      "profile": {
+        "firstName": "John",
+        "lastName": "PropertyDev",
+        "phone": "+1-555-0002",
+        "country": "United States",
+        "kycStatus": "verified",
+        "kycLevel": "enhanced",
+        "profileImage": "https://ui-avatars.com/api/?name=John+PropertyDev&background=4CAF50&color=fff",
+        "company": "PropertyDev Holdings LLC",
+        "license": "RE-2025-001"
+      },
+      "walletAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "permissions": [
+        "asset_tokenization",
+        "marketplace_listing",
+        "yield_distribution",
+        "investor_communication"
+      ],
+      "assets": [
+        {
+          "id": "asset-001",
+          "name": "Premium Downtown Apartments",
+          "location": "New York, NY",
+          "value": 2500000,
+          "tokensIssued": 1000000,
+          "status": "active"
+        }
+      ],
+      "createdAt": "2025-02-15T00:00:00Z",
+      "lastLogin": "2025-06-15T09:30:00Z"
+    },
+    "investor": {
+      "id": "investor-001", 
+      "email": "investor@wealth.com",
+      "password": "Investor123!",
+      "role": "investor",
+      "profile": {
+        "firstName": "Jane",
+        "lastName": "Investor",
+        "phone": "+1-555-0003",
+        "country": "United States",
+        "kycStatus": "verified",
+        "kycLevel": "enhanced",
+        "profileImage": "https://ui-avatars.com/api/?name=Jane+Investor&background=FF9800&color=fff",
+        "investorType": "accredited",
+        "riskTolerance": "moderate"
+      },
+      "walletAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "permissions": [
+        "asset_purchase",
+        "marketplace_browse",
+        "yield_claim",
+        "portfolio_view"
+      ],
+      "portfolio": {
+        "totalValue": 125480.50,
+        "totalInvested": 98500.00,
+        "assets": [
+          {
+            "tokenAddress": "0x36C02dA8a0983159322a80FFE9F24b1acfF8B570",
+            "name": "Premium Real Estate Token",
+            "symbol": "PRET",
+            "balance": "200.0",
+            "value": 20000.00
+          }
+        ]
+      },
+      "createdAt": "2025-03-01T00:00:00Z",
+      "lastLogin": "2025-06-15T11:15:00Z"
+    },
+    "compliance": {
+      "id": "compliance-001",
+      "email": "compliance@omniaxis.com",
+      "password": "Compliance123!",
+      "role": "compliance",
+      "profile": {
+        "firstName": "Sarah",
+        "lastName": "Compliance",
+        "phone": "+1-555-0004",
+        "country": "United States",
+        "kycStatus": "verified",
+        "kycLevel": "institutional",
+        "profileImage": "https://ui-avatars.com/api/?name=Sarah+Compliance&background=9C27B0&color=fff",
+        "department": "Legal & Compliance",
+        "certifications": ["CAMS", "CFE"]
+      },
+      "walletAddress": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "permissions": [
+        "kyc_verification",
+        "aml_monitoring",
+        "compliance_reporting",
+        "user_suspension",
+        "transaction_review"
+      ],
+      "createdAt": "2025-01-15T00:00:00Z",
+      "lastLogin": "2025-06-15T08:45:00Z"
+    },
+    "support": {
+      "id": "support-001",
+      "email": "support@omniaxis.com", 
+      "password": "Support123!",
+      "role": "support",
+      "profile": {
+        "firstName": "Mike",
+        "lastName": "Support",
+        "phone": "+1-555-0005",
+        "country": "United States",
+        "kycStatus": "verified",
+        "kycLevel": "basic",
+        "profileImage": "https://ui-avatars.com/api/?name=Mike+Support&background=607D8B&color=fff",
+        "department": "Customer Support",
+        "languages": ["English", "Spanish", "French"]
+      },
+      "walletAddress": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "permissions": [
+        "user_support",
+        "ticket_management",
+        "basic_account_assistance",
+        "documentation_access"
+      ],
+      "createdAt": "2025-02-01T00:00:00Z",
+      "lastLogin": "2025-06-15T12:00:00Z"
+    }
+  },
+  "rolePermissions": {
+    "admin": {
+      "description": "Full system access with all administrative privileges",
+      "permissions": [
+        "user_management",
+        "contract_management", 
+        "marketplace_admin",
+        "compliance_management",
+        "system_settings",
+        "analytics_access",
+        "emergency_controls"
+      ]
+    },
+    "issuer": {
+      "description": "Asset tokenization and management capabilities",
+      "permissions": [
+        "asset_tokenization",
+        "marketplace_listing",
+        "yield_distribution",
+        "investor_communication",
+        "asset_management",
+        "financial_reporting"
+      ]
+    },
+    "investor": {
+      "description": "Investment and portfolio management access",
+      "permissions": [
+        "asset_purchase",
+        "marketplace_browse",
+        "yield_claim",
+        "portfolio_view",
+        "transaction_history",
+        "support_tickets"
+      ]
+    },
+    "compliance": {
+      "description": "KYC/AML and regulatory compliance management",
+      "permissions": [
+        "kyc_verification",
+        "aml_monitoring",
+        "compliance_reporting",
+        "user_suspension",
+        "transaction_review",
+        "regulatory_reporting"
+      ]
+    },
+    "support": {
+      "description": "Customer service and basic account assistance",
+      "permissions": [
+        "user_support",
+        "ticket_management",
+        "basic_account_assistance",
+        "documentation_access",
+        "chat_support"
+      ]
+    }
+  },
+  "testCredentials": {
+    "note": "These are demo credentials for testing purposes only",
+    "accounts": [
+      {
+        "role": "Admin",
+        "email": "admin@omniaxis.com",
+        "password": "Admin123!",
+        "description": "Full system administrator access"
+      },
+      {
+        "role": "Asset Issuer", 
+        "email": "issuer@realestate.com",
+        "password": "Issuer123!",
+        "description": "Real estate tokenization and management"
+      },
+      {
+        "role": "Investor",
+        "email": "investor@wealth.com", 
+        "password": "Investor123!",
+        "description": "Asset investment and portfolio management"
+      },
+      {
+        "role": "Compliance Officer",
+        "email": "compliance@omniaxis.com",
+        "password": "Compliance123!",
+        "description": "KYC/AML and regulatory oversight"
+      },
+      {
+        "role": "Support Agent",
+        "email": "support@omniaxis.com",
+        "password": "Support123!",
+        "description": "Customer service and technical support"
+      }
+    ]
+  }
+}
