@@ -56,7 +56,7 @@ export default function LoginScreen() {
       const { user, error } = await signIn(formData);
       
       if (error) {
-        Alert.alert(t('common.error'), error.message || 'Login failed');
+        Alert.alert(t('common.error'), (error as any)?.message || 'Login failed');
         return;
       }
 
@@ -92,7 +92,7 @@ export default function LoginScreen() {
       const { user, error } = await signInWithDemoAccount(role);
       
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to access demo account');
+        Alert.alert('Error', (error as any)?.message || 'Failed to access demo account');
         return;
       }
 
@@ -202,9 +202,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <Button
-              title={isLoading ? 'Signing In...' : t('auth.signIn')}
+              title={loading ? 'Signing In...' : t('auth.signIn')}
               onPress={handleLogin}
-              loading={isLoading}
+              loading={loading}
               fullWidth
             />
 

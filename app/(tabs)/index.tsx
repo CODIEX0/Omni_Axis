@@ -33,6 +33,7 @@ import { ErrorMessage } from '../../components/ui/ErrorMessage';
 import { AIChat } from '../../components/AIChat';
 import { FloatingChatButton } from '../../components/FloatingChatButton';
 
+
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {

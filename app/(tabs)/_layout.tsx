@@ -77,15 +77,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="test"
-        options={{
-          title: 'Test',
-          tabBarIcon: ({ size, color }) => (
-            <Plus size={size} color={color} strokeWidth={2.5} />
-          ),
-        }}
-      />
     </Tabs>
   );
 }
