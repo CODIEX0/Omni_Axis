@@ -13,12 +13,13 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+// Note: Picker would be imported like this when @react-native-picker/picker is installed
+// import { Picker } from '@react-native-picker/picker';
 import accessibilityService, {
   AccessibilitySettings,
   FontSize,
   AccessibilityLanguage,
-} from '../../services/accessibility';
+} from '../services/accessibility';
 
 interface AccessibilitySettingsProps {
   onSettingsChange?: (settings: AccessibilitySettings) => void;
@@ -143,23 +144,44 @@ export const AccessibilitySettingsComponent: React.FC<AccessibilitySettingsProps
         <Text style={[styles.sectionTitle, { fontSize: 18 * fontSizeMultiplier }]}>
           Language
         </Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={settings.language}
-            onValueChange={(value: AccessibilityLanguage) =>
-              updateSetting('language', value)
-            }
-            style={styles.picker}
-          >
-            {availableLanguages.map((lang) => (
-              <Picker.Item
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.languageContainer}>
+            {availableLanguages.slice(0, 8).map((lang) => (
+              <TouchableOpacity
                 key={lang.code}
-                label={`${lang.name} (${lang.nativeName})`}
-                value={lang.code}
-              />
+                style={[
+                  styles.languageButton,
+                  settings.language === lang.code && { backgroundColor: accessibility.theme.primary + '20' }
+                ]}
+                onPress={() => updateSetting('language', lang.code)}
+                accessibilityLabel={`Select ${lang.name} language`}
+              >
+                <Text
+                  style={[
+                    styles.languageCode,
+                    {
+                      fontSize: 14 * fontSizeMultiplier,
+                      color: settings.language === lang.code ? accessibility.theme.primary : accessibility.theme.text
+                    }
+                  ]}
+                >
+                  {lang.code.toUpperCase()}
+                </Text>
+                <Text
+                  style={[
+                    styles.languageName,
+                    {
+                      fontSize: 10 * fontSizeMultiplier,
+                      color: settings.language === lang.code ? accessibility.theme.primary : accessibility.theme.textSecondary
+                    }
+                  ]}
+                >
+                  {lang.name}
+                </Text>
+              </TouchableOpacity>
             ))}
-          </Picker>
-        </View>
+          </View>
+        </ScrollView>
       </View>
 
       {/* Font Size */}
@@ -167,21 +189,79 @@ export const AccessibilitySettingsComponent: React.FC<AccessibilitySettingsProps
         <Text style={[styles.sectionTitle, { fontSize: 18 * fontSizeMultiplier }]}>
           Font Size
         </Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={settings.fontSize}
-            onValueChange={(value: FontSize) => updateSetting('fontSize', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Small" value="small" />
-            <Picker.Item label="Medium (Default)" value="medium" />
-            <Picker.Item label="Large" value="large" />
-            <Picker.Item label="Extra Large" value="extra-large" />
-          </Picker>
+        <View style={styles.optionsContainer}>
+          {(['small', 'medium', 'large', 'extra-large'] as FontSize[]).map((size) => (
+            <TouchableOpacity
+              key={size}
+              style={[
+                styles.optionButton,
+                settings.fontSize === size && { backgroundColor: accessibility.theme.primary + '20' }
+              ]}
+              onPress={() => updateSetting('fontSize', size)}
+              accessibilityLabel={`Set font size to ${size}`}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  {
+                    fontSize: 16 * fontSizeMultiplier,
+                    color: settings.fontSize === size ? accessibility.theme.primary : accessibility.theme.text
+                  }
+                ]}
+              >
+                {size === 'extra-large' ? 'XL' : size.charAt(0).toUpperCase() + size.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
         <Text style={[styles.previewText, { fontSize: 16 * fontSizeMultiplier }]}>
           Preview text at current size
         </Text>
+      </View>
+
+      {/* Language Selection */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { fontSize: 18 * fontSizeMultiplier }]}>
+          Language
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.languageContainer}>
+            {availableLanguages.slice(0, 8).map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={[
+                  styles.languageButton,
+                  settings.language === lang.code && { backgroundColor: accessibility.theme.primary + '20' }
+                ]}
+                onPress={() => updateSetting('language', lang.code)}
+                accessibilityLabel={`Select ${lang.name} language`}
+              >
+                <Text
+                  style={[
+                    styles.languageCode,
+                    {
+                      fontSize: 14 * fontSizeMultiplier,
+                      color: settings.language === lang.code ? accessibility.theme.primary : accessibility.theme.text
+                    }
+                  ]}
+                >
+                  {lang.code.toUpperCase()}
+                </Text>
+                <Text
+                  style={[
+                    styles.languageName,
+                    {
+                      fontSize: 10 * fontSizeMultiplier,
+                      color: settings.language === lang.code ? accessibility.theme.primary : accessibility.theme.textSecondary
+                    }
+                  ]}
+                >
+                  {lang.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       {/* Visual Accessibility */}
@@ -349,6 +429,45 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  optionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  optionText: {
+    fontWeight: '500',
+  },
+  languageContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  languageButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  languageCode: {
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  languageName: {
+    textAlign: 'center',
   },
   previewText: {
     color: '#6B7280',
