@@ -8,24 +8,32 @@ import {
   Image,
   Switch,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Settings, Shield, Bell, CircleHelp as HelpCircle, FileText, LogOut, ChevronRight, Star, Wallet, Globe, Moon, Smartphone, CreditCard, Lock, Eye, Download, TestTube, Database } from 'lucide-react-native';
+import { User, Settings, Shield, Bell, CircleHelp as HelpCircle, FileText, LogOut, ChevronRight, Star, Wallet, Globe, Moon, Smartphone, CreditCard, Lock, Eye, Download, TestTube, Database, Accessibility, Languages } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { KYCStatus } from '../../components/KYCStatus';
 import { portfolioService } from '../../services/portfolioService';
 import { DemoModeToggle } from '../../components/DemoModeToggle';
+import useAccessibility from '../../hooks/useAccessibility';
+import AccessibilitySettingsComponent from '../../components/AccessibilitySettings';
+import LanguageSelector from '../../components/LanguageSelector';
+import { securityService } from '../../services/security';
 
 export default function ProfileScreen() {
   const { user, profile, isDemoMode, demoAccount, signOut } = useAuth();
+  const accessibility = useAccessibility();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [realUserPortfolio, setRealUserPortfolio] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [showDemoToggle, setShowDemoToggle] = useState(false);
+  const [showAccessibilitySettings, setShowAccessibilitySettings] = useState(false);
+  const [securityStatus, setSecurityStatus] = useState<any>(null);
 
   // Load real user portfolio data
   useEffect(() => {
@@ -43,7 +51,17 @@ export default function ProfileScreen() {
       }
     };
 
+    const loadSecurityStatus = async () => {
+      try {
+        const status = await securityService.getSecurityStatus();
+        setSecurityStatus(status);
+      } catch (error) {
+        console.error('Failed to load security status:', error);
+      }
+    };
+
     loadRealUserData();
+    loadSecurityStatus();
   }, [user, isDemoMode]);
 
   const getUserProfile = () => {
@@ -97,8 +115,78 @@ export default function ProfileScreen() {
       ]
     },
     {
+      title: 'Accessibility & Language',
+      items: [
+        { 
+          icon: Accessibility, 
+          label: 'Accessibility Settings', 
+          action: () => {
+            setShowAccessibilitySettings(true);
+            accessibility.hapticFeedback('light');
+          },
+          value: `Font: ${accessibility.settings.fontSize}`
+        },
+        { 
+          icon: Languages, 
+          label: 'Language', 
+          action: () => {},
+          customComponent: true
+        },
+        { 
+          icon: Moon, 
+          label: 'High Contrast', 
+          action: () => {},
+          toggle: true,
+          value: accessibility.settings.highContrast,
+          onToggle: (value: boolean) => accessibility.updateSetting('highContrast', value)
+        },
+        { 
+          icon: Bell, 
+          label: 'Voice Over', 
+          action: () => {},
+          toggle: true,
+          value: accessibility.settings.voiceOver,
+          onToggle: (value: boolean) => accessibility.updateSetting('voiceOver', value)
+        },
+        { 
+          icon: Smartphone, 
+          label: 'Haptic Feedback', 
+          action: () => {},
+          toggle: true,
+          value: accessibility.settings.hapticFeedback,
+          onToggle: (value: boolean) => accessibility.updateSetting('hapticFeedback', value)
+        },
+        { 
+          icon: HelpCircle, 
+          label: 'User Hints', 
+          action: () => {},
+          toggle: true,
+          value: accessibility.settings.hintsEnabled,
+          onToggle: (value: boolean) => accessibility.updateSetting('hintsEnabled', value)
+        },
+      ]
+    },
+    {
       title: 'Security',
       items: [
+        { 
+          icon: Shield, 
+          label: 'Security Status', 
+          action: async () => {
+            try {
+              const status = await securityService.getSecurityStatus();
+              Alert.alert(
+                'Security Status',
+                `Security Level: ${status.overallSecurityLevel}\nDevice Trust: ${status.deviceTrust.isValid ? 'Trusted' : 'Not Trusted'}\nLast Check: ${new Date(status.lastSecurityCheck).toLocaleString()}`
+              );
+              accessibility.hapticFeedback('light');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to check security status');
+              accessibility.hapticFeedback('error');
+            }
+          },
+          value: securityStatus ? securityStatus.overallSecurityLevel : 'Unknown'
+        },
         { icon: Lock, label: 'Change Password', action: () => {} },
         { icon: Smartphone, label: 'Two-Factor Authentication', action: () => {} },
         { icon: Eye, label: 'Privacy Settings', action: () => {} },
