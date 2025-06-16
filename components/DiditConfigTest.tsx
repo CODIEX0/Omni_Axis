@@ -50,7 +50,7 @@ export const DiditConfigTest: React.FC = () => {
       console.log('Testing Didit configuration...');
       const hasApiKey = DIDIT_API_KEY && DIDIT_API_KEY !== 'your_didit_api_key_here';
       const hasApiUrl = DIDIT_API_URL && DIDIT_API_URL.includes('didit.me');
-      results.configCheck = hasApiKey && hasApiUrl;
+      results.configCheck = !!(hasApiKey && hasApiUrl);
 
       // Test 2: API Connection (simple ping)
       console.log('Testing API connection...');

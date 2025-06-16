@@ -42,7 +42,7 @@ interface SignupForm {
   confirmPassword: string;
   phone: string;
   country: string;
-  role: 'investor' | 'issuer' | 'compliance' | 'support' | '';
+  role: 'admin' | 'investor' | 'issuer' | 'compliance' | 'support' | '';
   company?: string;
   agreeToTerms: boolean;
 }
@@ -177,7 +177,7 @@ export const ModernSignup: React.FC = () => {
       });
 
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to create account');
+        Alert.alert('Error', (error as any).message || 'Failed to create account');
         return;
       }
 
@@ -206,7 +206,7 @@ export const ModernSignup: React.FC = () => {
       const { user, error } = await signInWithDemoAccount(accountType);
       
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to access demo account');
+        Alert.alert('Error', (error as any).message || 'Failed to access demo account');
         return;
       }
 
@@ -392,7 +392,7 @@ export const ModernSignup: React.FC = () => {
       <Text style={styles.stepSubtitle}>Select the role that best describes your intended use</Text>
       
       <View style={styles.roleGrid}>
-        {Object.entries(demoAccounts.rolePermissions).map(([roleKey, roleData]) => {
+        {Object.entries(demoAccountService.getAccountSummary()).map(([roleKey, roleData]) => {
           if (roleKey === 'admin') return null; // Admin not available for signup
           
           const IconComponent = roleIcons[roleKey as keyof typeof roleIcons];

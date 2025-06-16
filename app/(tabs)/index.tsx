@@ -23,11 +23,9 @@ import {
   Search
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { useTypedSelector } from '../../hooks/useTypedSelector';
-import { fetchPortfolio } from '../../store/slices/portfolioSlice';
-import { fetchMarketplaceAssets } from '../../store/slices/marketplaceSlice';
-import { AssetCard } from '../../components/AssetCard';
+import { useAuth } from '../../hooks/useAuth';
+import { userDataService } from '../../services/userDataService';
+import { demoDataService } from '../../services/demoDataService';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ErrorMessage } from '../../components/ui/ErrorMessage';
 import { AIChat } from '../../components/AIChat';
@@ -38,19 +36,57 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const dispatch = useAppDispatch();
+  const { user, profile, isDemoMode, demoAccount } = useAuth();
   
-  const { user } = useTypedSelector(state => state.auth);
-  const { summary, isLoading: portfolioLoading, error: portfolioError } = useTypedSelector(state => state.portfolio);
-  const { assets, isLoading: assetsLoading, error: assetsError } = useTypedSelector(state => state.marketplace);
-  
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [marketplaceAssets, setMarketplaceAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [hideBalance, setHideBalance] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchPortfolio());
-    dispatch(fetchMarketplaceAssets());
-  }, [dispatch]);
+    loadDashboardData();
+  }, [user, profile, isDemoMode, demoAccount]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (isDemoMode && demoAccount) {
+        // Use demo data service
+        const demoDashboardData = demoDataService.getDemoDashboardData(demoAccount);
+        setDashboardData(demoDashboardData);
+
+        // Demo marketplace assets
+        const demoAssets = demoDataService.getDemoAssets().slice(0, 3).map(asset => ({
+          id: asset.id,
+          title: asset.title,
+          description: asset.description,
+          assetType: asset.assetType,
+          estimatedValue: asset.estimatedValue,
+          listingPrice: asset.listingPrice,
+          imageUrls: asset.imageUrls,
+          ownerName: asset.ownerName,
+          status: asset.status,
+        }));
+        setMarketplaceAssets(demoAssets);
+      } else if (user) {
+        // Load real user data
+        const data = await userDataService.getDashboardData(user, profile);
+        setDashboardData(data);
+
+        const assets = await userDataService.getMarketplaceAssets();
+        setMarketplaceAssets(assets);
+      }
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const quickActions = [
     { icon: Plus, label: t('tokenize.title'), color: '#F59E0B', route: '/(tabs)/tokenize' },
@@ -59,10 +95,25 @@ export default function HomeScreen() {
     { icon: Zap, label: 'Quick Trade', color: '#EF4444', route: '/(tabs)/marketplace' },
   ];
 
-  const featuredAssets = assets.slice(0, 3);
+  const featuredAssets = marketplaceAssets.slice(0, 3);
 
-  if (portfolioLoading && assetsLoading) {
+  if (loading) {
     return <LoadingSpinner message={t('common.loading')} />;
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ErrorMessage 
+          message={error} 
+          onRetry={loadDashboardData} 
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (!dashboardData) {
+    return <LoadingSpinner message="Loading dashboard..." />;
   }
 
   return (
@@ -72,7 +123,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Good morning</Text>
-            <Text style={styles.userName}>{user?.firstName} {user?.lastName}</Text>
+            <Text style={styles.userName}>{dashboardData.user.firstName} {dashboardData.user.lastName}</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Bell color="#1F2937" size={24} />
@@ -89,7 +140,7 @@ export default function HomeScreen() {
             <Text style={styles.portfolioTitle}>{t('portfolio.totalValue')}</Text>
             <TouchableOpacity onPress={() => setHideBalance(!hideBalance)}>
               {hideBalance ? (
-                <EyeOff color="rgba(255, 255, 255, 0.7)\" size={20} />
+                <EyeOff color="rgba(255, 255, 255, 0.7)" size={20} />
               ) : (
                 <Eye color="rgba(255, 255, 255, 0.7)" size={20} />
               )}
@@ -97,13 +148,13 @@ export default function HomeScreen() {
           </View>
           
           <Text style={styles.portfolioValue}>
-            {hideBalance ? '••••••••' : `$${summary.totalValue.toLocaleString()}`}
+            {hideBalance ? '••••••••' : `${dashboardData.portfolio.totalValue.toLocaleString()}`}
           </Text>
           
           <View style={styles.portfolioChange}>
             <TrendingUp color="#10B981" size={16} />
             <Text style={styles.portfolioChangeText}>
-              +${summary.changeAmount.toLocaleString()} ({summary.change24h}%)
+              +${dashboardData.portfolio.changeAmount.toLocaleString()} ({dashboardData.portfolio.change24h}%)
             </Text>
           </View>
 
@@ -134,27 +185,25 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {assetsError ? (
-            <ErrorMessage 
-              message={assetsError} 
-              onRetry={() => dispatch(fetchMarketplaceAssets())} 
-            />
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.featuredAssetsContainer}
-            >
-              {featuredAssets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  onPress={() => {}}
-                  variant="featured"
-                />
-              ))}
-            </ScrollView>
-          )}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.featuredAssetsContainer}
+          >
+            {featuredAssets.map((asset) => (
+              <View key={asset.id} style={styles.assetCard}>
+                <View style={styles.assetImage}>
+                  <Text style={styles.assetImagePlaceholder}>📷</Text>
+                </View>
+                <View style={styles.assetInfo}>
+                  <Text style={styles.assetTitle} numberOfLines={2}>{asset.title}</Text>
+                  <Text style={styles.assetType}>{asset.assetType.replace('_', ' ').toUpperCase()}</Text>
+                  <Text style={styles.assetPrice}>${asset.listingPrice}</Text>
+                  <Text style={styles.assetOwner}>by {asset.ownerName}</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Market Insights */}
@@ -162,38 +211,23 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Market Insights</Text>
           
           <View style={styles.insightsContainer}>
-            <View style={styles.insightCard}>
-              <View style={styles.insightIcon}>
-                <Building color="#1E40AF" size={24} />
-              </View>
-              <View style={styles.insightContent}>
-                <Text style={styles.insightTitle}>Real Estate</Text>
-                <Text style={styles.insightValue}>+12.5%</Text>
-                <Text style={styles.insightSubtext}>This month</Text>
-              </View>
-            </View>
-
-            <View style={styles.insightCard}>
-              <View style={styles.insightIcon}>
-                <Palette color="#8B5CF6" size={24} />
-              </View>
-              <View style={styles.insightContent}>
-                <Text style={styles.insightTitle}>Art & Collectibles</Text>
-                <Text style={styles.insightValue}>+8.7%</Text>
-                <Text style={styles.insightSubtext}>This month</Text>
-              </View>
-            </View>
-
-            <View style={styles.insightCard}>
-              <View style={styles.insightIcon}>
-                <DollarSign color="#F59E0B" size={24} />
-              </View>
-              <View style={styles.insightContent}>
-                <Text style={styles.insightTitle}>Commodities</Text>
-                <Text style={styles.insightValue}>+5.2%</Text>
-                <Text style={styles.insightSubtext}>This month</Text>
-              </View>
-            </View>
+            {dashboardData.marketInsights.map((insight: any, index: number) => {
+              const IconComponent = insight.icon === 'Building' ? Building : 
+                                  insight.icon === 'Palette' ? Palette : DollarSign;
+              
+              return (
+                <View key={index} style={styles.insightCard}>
+                  <View style={[styles.insightIcon, { backgroundColor: `${insight.color}20` }]}>
+                    <IconComponent color={insight.color} size={24} />
+                  </View>
+                  <View style={styles.insightContent}>
+                    <Text style={styles.insightTitle}>{insight.category}</Text>
+                    <Text style={styles.insightValue}>{insight.change}</Text>
+                    <Text style={styles.insightSubtext}>{insight.period}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -202,41 +236,42 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Recent Activity</Text>
           
           <View style={styles.activityContainer}>
-            <TouchableOpacity style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: '#10B981' }]}>
-                <TrendingUp color="#FFFFFF" size={16} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Purchased 50 tokens</Text>
-                <Text style={styles.activitySubtext}>Manhattan Office Building</Text>
-                <Text style={styles.activityTime}>2 hours ago</Text>
-              </View>
-              <Text style={styles.activityAmount}>$6,275</Text>
-            </TouchableOpacity>
+            {dashboardData.recentActivity.map((activity: any) => {
+              const getActivityIcon = (type: string) => {
+                switch (type) {
+                  case 'buy': return TrendingUp;
+                  case 'sell': return ChevronRight;
+                  case 'transfer': return DollarSign;
+                  default: return TrendingUp;
+                }
+              };
 
-            <TouchableOpacity style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: '#F59E0B' }]}>
-                <DollarSign color="#FFFFFF" size={16} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Dividend received</Text>
-                <Text style={styles.activitySubtext}>Art Collection #247</Text>
-                <Text style={styles.activityTime}>1 day ago</Text>
-              </View>
-              <Text style={styles.activityAmount}>$125.50</Text>
-            </TouchableOpacity>
+              const getActivityColor = (type: string) => {
+                switch (type) {
+                  case 'buy': return '#10B981';
+                  case 'sell': return '#EF4444';
+                  case 'transfer': return '#F59E0B';
+                  default: return '#10B981';
+                }
+              };
 
-            <TouchableOpacity style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: '#EF4444' }]}>
-                <ChevronRight color="#FFFFFF" size={16} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Sold 25 tokens</Text>
-                <Text style={styles.activitySubtext}>Gold Mining Rights</Text>
-                <Text style={styles.activityTime}>3 days ago</Text>
-              </View>
-              <Text style={styles.activityAmount}>$1,500</Text>
-            </TouchableOpacity>
+              const ActivityIcon = getActivityIcon(activity.type);
+              const activityColor = getActivityColor(activity.type);
+
+              return (
+                <TouchableOpacity key={activity.id} style={styles.activityItem}>
+                  <View style={[styles.activityIcon, { backgroundColor: activityColor }]}>
+                    <ActivityIcon color="#FFFFFF" size={16} />
+                  </View>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{activity.title}</Text>
+                    <Text style={styles.activitySubtext}>{activity.subtitle}</Text>
+                    <Text style={styles.activityTime}>{activity.time}</Text>
+                  </View>
+                  <Text style={styles.activityAmount}>${activity.amount.toLocaleString()}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </ScrollView>
@@ -398,6 +433,56 @@ const styles = StyleSheet.create({
   featuredAssetsContainer: {
     paddingLeft: 20,
     paddingRight: 8,
+  },
+  assetCard: {
+    width: 200,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  assetImage: {
+    height: 120,
+    backgroundColor: '#F3F4F6',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  assetImagePlaceholder: {
+    fontSize: 32,
+  },
+  assetInfo: {
+    padding: 16,
+  },
+  assetTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  assetType: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  assetPrice: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#1E40AF',
+    marginBottom: 4,
+  },
+  assetOwner: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   insightsContainer: {
     paddingHorizontal: 20,

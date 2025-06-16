@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -15,57 +9,57 @@ interface BadgeProps {
   textStyle?: TextStyle;
 }
 
-export function Badge({
-  children,
-  variant = 'default',
-  size = 'medium',
-  style,
-  textStyle,
+export function Badge({ 
+  children, 
+  variant = 'default', 
+  size = 'medium', 
+  style, 
+  textStyle 
 }: BadgeProps) {
-  const badgeStyles = [
-    styles.base,
-    styles[variant],
-    styles[size],
-    style,
-  ];
-
-  const textStyles = [
-    styles.text,
-    styles[`${variant}Text`],
-    styles[`${size}Text`],
-    textStyle,
-  ];
-
   return (
-    <View style={badgeStyles}>
-      <Text style={textStyles}>{children}</Text>
+    <View style={[
+      styles.badge,
+      styles[variant],
+      styles[size],
+      style
+    ]}>
+      <Text style={[
+        styles.text,
+        styles[`${variant}Text`],
+        styles[`${size}Text`],
+        textStyle
+      ]}>
+        {children}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
+  badge: {
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
     alignSelf: 'flex-start',
   },
+  
   // Variants
   default: {
     backgroundColor: '#F3F4F6',
   },
   success: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#10B981',
   },
   warning: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F59E0B',
   },
   error: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#EF4444',
   },
   info: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: '#3B82F6',
   },
+  
   // Sizes
   small: {
     paddingHorizontal: 6,
@@ -79,6 +73,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
+  
   // Text styles
   text: {
     fontFamily: 'Inter-SemiBold',
@@ -88,17 +83,19 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   successText: {
-    color: '#065F46',
+    color: '#FFFFFF',
   },
   warningText: {
-    color: '#92400E',
+    color: '#FFFFFF',
   },
   errorText: {
-    color: '#991B1B',
+    color: '#FFFFFF',
   },
   infoText: {
-    color: '#1E40AF',
+    color: '#FFFFFF',
   },
+  
+  // Text sizes
   smallText: {
     fontSize: 10,
   },

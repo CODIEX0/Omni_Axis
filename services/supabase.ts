@@ -25,7 +25,7 @@ export interface UserProfile {
   phone_number?: string;
   wallet_address?: string;
   kyc_status: 'not_started' | 'pending' | 'approved' | 'rejected';
-  role: 'buyer' | 'seller' | 'admin';
+  role: 'buyer' | 'seller' | 'admin' | 'compliance' | 'investor' | 'issuer';
   avatar_url?: string;
   created_at: string;
   updated_at: string;

@@ -128,7 +128,7 @@ function detectLanguage(): string {
   
   // Try exact match first
   for (const locale of locales) {
-    const languageTag = locale.languageTag || locale;
+    const languageTag = (locale as any).languageTag || (locale as string);
     if (resources[languageTag as keyof typeof resources]) {
       return languageTag;
     }
@@ -152,7 +152,6 @@ function detectLanguage(): string {
 i18n
   .use(initReactI18next)
   .init({
-    compatibilityJSON: 'v3',
     resources,
     lng: detectLanguage(),
     fallbackLng: 'en',

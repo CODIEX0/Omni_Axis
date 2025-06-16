@@ -6,8 +6,8 @@ import {
   useBalance, 
   useConnect,
   useDisconnect,
-  ConnectedWallet,
 } from '@thirdweb-dev/react-native';
+import type { WalletInstance } from '@thirdweb-dev/react-native';
 import { POLYGON_MUMBAI } from '../constants';
 import { useAuth } from './useAuth';
 
@@ -16,7 +16,7 @@ export interface WalletState {
   balance: string | undefined;
   isConnected: boolean;
   isConnecting: boolean;
-  wallet: ConnectedWallet | undefined;
+  wallet: WalletInstance | undefined;
   chainId: number | undefined;
 }
 
@@ -52,7 +52,7 @@ export const useWalletConnection = () => {
       isConnected,
       isConnecting,
       wallet,
-      chainId: wallet?.getChainId ? wallet.getChainId() : undefined,
+      chainId: wallet?.getChainId ? (wallet.getChainId() as any) : undefined,
     });
 
     // Update user profile with wallet address
@@ -62,10 +62,10 @@ export const useWalletConnection = () => {
   }, [address, balance, connectionStatus, wallet, profile, updateProfile]);
 
   // Connect to a specific wallet
-  const connectWallet = async (walletId: string) => {
+  const connectWallet = async (walletConfig: any) => {
     try {
       setWalletState(prev => ({ ...prev, isConnecting: true }));
-      await connect(walletId);
+      await connect(walletConfig);
     } catch (error) {
       console.error('Error connecting wallet:', error);
       throw error;
@@ -110,7 +110,8 @@ export const useWalletConnection = () => {
         throw new Error('No wallet connected');
       }
 
-      const signature = await wallet.sign(message);
+      // Use personal_sign method if available
+      const signature = await (wallet as any).personalSign?.(message) || (wallet as any).sign?.(message);
       return signature;
     } catch (error) {
       console.error('Error signing message:', error);

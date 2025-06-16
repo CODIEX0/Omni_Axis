@@ -70,8 +70,8 @@ export default function TokenizeNewScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user, isAuthenticated } = useTypedSelector(state => state.auth);
-  const { kycStatus } = useTypedSelector(state => state.user);
-  const { requestCameraPermission, takePicture } = useCamera();
+  const { status: kycStatus } = useTypedSelector(state => state.kyc);
+  const { requestPermission, takePicture } = useCamera();
   const { pickDocument } = useDocumentPicker();
   const { tokenizeAsset, isLoading } = useTokenizeAsset();
 

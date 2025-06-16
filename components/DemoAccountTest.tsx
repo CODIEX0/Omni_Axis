@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { demoAccountsService } from '../services/demoAccounts';
+import { demoAccountService } from '../services/demoAccounts';
 
 export const DemoAccountTest: React.FC = () => {
   const testDemoAccounts = async () => {
@@ -8,20 +8,20 @@ export const DemoAccountTest: React.FC = () => {
       console.log('Testing Demo Accounts Service...');
       
       // Test 1: Load demo accounts
-      const accounts = await demoAccountsService.getDemoAccounts();
+      const accounts = demoAccountService.getAllAccounts();
       console.log('✅ Demo accounts loaded:', accounts.length);
       
       // Test 2: Get specific role
-      const investor = await demoAccountsService.getDemoAccountByRole('investor');
+      const investor = demoAccountService.getAccountByRole('investor');
       console.log('✅ Investor account:', !!investor);
       
       // Test 3: Get asset manager
-      const assetManager = await demoAccountsService.getDemoAccountByRole('asset_manager');
+      const assetManager = demoAccountService.getAccountByRole('issuer');
       console.log('✅ Asset manager account:', !!assetManager);
       
       Alert.alert(
         'Demo Accounts Test',
-        `✅ Found ${accounts.length} demo accounts\n✅ Investor: ${investor?.name}\n✅ Asset Manager: ${assetManager?.name}`,
+        `✅ Found ${accounts.length} demo accounts\n✅ Investor: ${investor?.profile?.firstName}\n✅ Asset Manager: ${assetManager?.profile?.firstName}`,
         [{ text: 'OK' }]
       );
       
@@ -29,7 +29,7 @@ export const DemoAccountTest: React.FC = () => {
       console.error('Demo Accounts Test Error:', error);
       Alert.alert(
         'Test Failed',
-        `Error: ${error.message}`,
+        `Error: ${(error as any)?.message || 'Unknown error'}`,
         [{ text: 'OK' }]
       );
     }

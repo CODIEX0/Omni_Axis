@@ -28,7 +28,7 @@ export const AppFunctionalityTest: React.FC = () => {
       setTestResults(prev => 
         prev.map(test => 
           test.name === testName 
-            ? { ...test, status: 'failed', error: error.message }
+            ? { ...test, status: 'failed', error: (error as any).message }
             : test
         )
       );
@@ -60,7 +60,7 @@ export const AppFunctionalityTest: React.FC = () => {
       // Test 2: Service Imports
       await runTest('Service Imports', async () => {
         const { diditKYCService } = await import('../services/diditKYC');
-        const { demoAccountsService } = await import('../services/demoAccounts');
+        const demoAccountsService = (await import('../services/demoAccounts')).default;
         
         if (!diditKYCService || !demoAccountsService) {
           throw new Error('Service imports failed');
@@ -79,8 +79,8 @@ export const AppFunctionalityTest: React.FC = () => {
 
       // Test 4: Demo Accounts
       await runTest('Demo Accounts Service', async () => {
-        const { demoAccountsService } = await import('../services/demoAccounts');
-        const accounts = await demoAccountsService.getDemoAccounts();
+        const demoAccountsService = (await import('../services/demoAccounts')).default;
+        const accounts = demoAccountsService.getAllAccounts();
         
         if (!accounts || accounts.length === 0) {
           throw new Error('No demo accounts found');
@@ -103,14 +103,14 @@ export const AppFunctionalityTest: React.FC = () => {
       // Test 6: AI Service
       await runTest('AI Service', async () => {
         try {
-          const { deepSeekAI } = await import('../services/deepSeekAI');
+          const deepSeekAI = (await import('../services/deepSeekAI')).default;
           // Just check if service can be imported without making actual API call
           if (!deepSeekAI) {
             throw new Error('AI service not available');
           }
         } catch (error) {
           // AI service might not be critical for basic functionality
-          console.log('AI service test skipped:', error.message);
+          console.log('AI service test skipped:', (error as any).message);
         }
       });
 

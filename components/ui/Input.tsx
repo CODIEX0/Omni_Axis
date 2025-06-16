@@ -1,142 +1,70 @@
 import React, { useState } from 'react';
-import {
-  View,
-  TextInput,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
+import { 
+  View, 
+  TextInput, 
+  Text, 
+  StyleSheet, 
   TouchableOpacity,
+  TextInputProps 
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 
-interface InputProps {
+interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
-  placeholder?: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  autoComplete?: string;
   error?: string;
-  disabled?: boolean;
-  multiline?: boolean;
-  numberOfLines?: number;
-  style?: ViewStyle;
-  inputStyle?: TextStyle;
+  secureTextEntry?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  onFocus?: () => void;
-  onBlur?: () => void;
+  style?: any;
 }
 
 export function Input({
   label,
-  placeholder,
-  value,
-  onChangeText,
-  secureTextEntry = false,
-  keyboardType = 'default',
-  autoCapitalize = 'sentences',
-  autoComplete,
   error,
-  disabled = false,
-  multiline = false,
-  numberOfLines = 1,
-  style,
-  inputStyle,
+  secureTextEntry,
   leftIcon,
   rightIcon,
-  onFocus,
-  onBlur,
+  style,
+  ...props
 }: InputProps) {
-  const [isFocused, setIsFocused] = useState(false);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-
-  const handleFocus = () => {
-    setIsFocused(true);
-    onFocus?.();
-  };
-
-  const handleBlur = () => {
-    setIsFocused(false);
-    onBlur?.();
-  };
-
-  const togglePasswordVisibility = () => {
-    setIsPasswordVisible(!isPasswordVisible);
-  };
-
-  const containerStyles = [
-    styles.container,
-    style,
-  ];
-
-  const inputContainerStyles = [
-    styles.inputContainer,
-    isFocused && styles.inputContainerFocused,
-    error && styles.inputContainerError,
-    disabled && styles.inputContainerDisabled,
-  ];
-
-  const textInputStyles = [
-    styles.input,
-    leftIcon && styles.inputWithLeftIcon,
-    (rightIcon || secureTextEntry) && styles.inputWithRightIcon,
-    multiline && styles.inputMultiline,
-    inputStyle,
-  ];
+  const [isSecure, setIsSecure] = useState(secureTextEntry);
 
   return (
-    <View style={containerStyles}>
+    <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
-      
-      <View style={inputContainerStyles}>
-        {leftIcon && (
-          <View style={styles.leftIconContainer}>
-            {leftIcon}
-          </View>
-        )}
-        
+      <View style={[
+        styles.inputContainer,
+        error && styles.inputContainerError,
+        style
+      ]}>
+        {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
         <TextInput
-          style={textInputStyles}
-          placeholder={placeholder}
+          style={[
+            styles.input,
+            leftIcon ? { paddingLeft: 8 } : null,
+            (rightIcon || secureTextEntry) ? { paddingRight: 8 } : null,
+          ]}
+          secureTextEntry={isSecure}
           placeholderTextColor="#9CA3AF"
-          value={value}
-          onChangeText={onChangeText}
-          secureTextEntry={secureTextEntry && !isPasswordVisible}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          autoComplete={autoComplete}
-          editable={!disabled}
-          multiline={multiline}
-          numberOfLines={numberOfLines}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
+          {...props}
         />
-        
         {secureTextEntry && (
           <TouchableOpacity
-            style={styles.rightIconContainer}
-            onPress={togglePasswordVisibility}
+            style={styles.eyeIcon}
+            onPress={() => setIsSecure(!isSecure)}
           >
-            {isPasswordVisible ? (
-              <EyeOff color="#6B7280\" size={20} />
+            {isSecure ? (
+              <EyeOff color="#6B7280" size={20} />
             ) : (
               <Eye color="#6B7280" size={20} />
             )}
           </TouchableOpacity>
         )}
-        
         {rightIcon && !secureTextEntry && (
-          <View style={styles.rightIconContainer}>
-            {rightIcon}
-          </View>
+          <View style={styles.rightIcon}>{rightIcon}</View>
         )}
       </View>
-      
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 }
@@ -146,61 +74,42 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
     color: '#374151',
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    minHeight: 48,
-  },
-  inputContainerFocused: {
-    borderColor: '#1E40AF',
-    shadowColor: '#1E40AF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
   },
   inputContainerError: {
     borderColor: '#EF4444',
   },
-  inputContainerDisabled: {
-    backgroundColor: '#F9FAFB',
-    opacity: 0.6,
-  },
   input: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#1F2937',
+  },
+    leftIcon: {
+    paddingLeft: 16,
+  },
+  rightIcon: {
+    paddingRight: 16,
+  },
+  eyeIcon: {
+    paddingRight: 16,
     paddingVertical: 12,
   },
-  inputWithLeftIcon: {
-    marginLeft: 12,
-  },
-  inputWithRightIcon: {
-    marginRight: 12,
-  },
-  inputMultiline: {
-    textAlignVertical: 'top',
-    minHeight: 100,
-  },
-  leftIconContainer: {
-    marginRight: 8,
-  },
-  rightIconContainer: {
-    marginLeft: 8,
-  },
-  errorText: {
-    fontSize: 14,
+  error: {
+    fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#EF4444',
     marginTop: 4,

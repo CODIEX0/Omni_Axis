@@ -11,10 +11,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Upload, Camera, FileText, DollarSign, Users, Calendar, CircleCheck as CheckCircle, ArrowRight, Building, Palette, Zap, Info } from 'lucide-react-native';
+import { Upload, Camera, FileText, DollarSign, Users, Calendar, CircleCheck as CheckCircle, ArrowRight, Building, Palette, Zap, Info, Star, TrendingUp } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useWalletConnection } from '../../hooks/useWallet';
 import { useTokenizeAsset, TokenizeAssetData } from '../../hooks/useTokenizeAsset';
+import { demoDataService } from '../../services/demoDataService';
 import { useCamera } from '../../hooks/useCamera';
 import { useDocumentPicker } from '../../hooks/useDocumentPicker';
 import { WalletConnector } from '../../components/WalletConnector';
@@ -25,10 +26,10 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ASSET_TYPES, COLORS, SPACING, FONT_SIZES } from '../../constants';
 
 export default function TokenizeScreen() {
-  const { user, canTokenizeAssets, isKYCCompleted } = useAuth();
+  const { user, canTokenizeAssets, isKYCCompleted, isDemoMode, demoAccount } = useAuth();
   const { isConnected, address } = useWalletConnection();
   const { tokenizeAsset, tokenizationStatus, resetStatus } = useTokenizeAsset();
-  const { takePhoto, pickImage } = useCamera();
+  const { takePicture, hasPermission, requestPermission } = useCamera();
   const { pickDocument } = useDocumentPicker();
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -37,6 +38,11 @@ export default function TokenizeScreen() {
     assetName: '',
     description: '',
     totalValue: '',
+    tokenPrice: '',
+    totalTokens: '',
+    minimumInvestment: '',
+    expectedROI: '',
+    duration: '',
     location: '',
     images: [] as string[],
     documents: [] as string[],
@@ -48,7 +54,14 @@ export default function TokenizeScreen() {
     'Review & Submit'
   ];
 
-  const assetTypes = ASSET_TYPES;
+  const assetTypes = ASSET_TYPES.map(type => ({
+    ...type,
+    icon: type.icon === 'Building' ? Building :
+          type.icon === 'Palette' ? Palette :
+          type.icon === 'Zap' ? Zap :
+          type.icon === 'Star' ? Star :
+          type.icon === 'TrendingUp' ? TrendingUp : Building
+  }));
 
   const updateFormData = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -56,10 +69,8 @@ export default function TokenizeScreen() {
 
   const handleImagePick = async () => {
     try {
-      const result = await pickImage();
-      if (result?.uri) {
-        updateFormData('images', [...formData.images, result.uri]);
-      }
+      // This would use expo-image-picker in a real implementation
+      Alert.alert('Feature Coming Soon', 'Image picker functionality will be implemented');
     } catch (error) {
       console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image');
@@ -68,9 +79,17 @@ export default function TokenizeScreen() {
 
   const handleTakePhoto = async () => {
     try {
-      const result = await takePhoto();
-      if (result?.uri) {
-        updateFormData('images', [...formData.images, result.uri]);
+      if (!hasPermission) {
+        const granted = await requestPermission();
+        if (!granted) {
+          Alert.alert('Permission Required', 'Camera permission is required to take photos');
+          return;
+        }
+      }
+      
+      const result = await takePicture();
+      if (result) {
+        updateFormData('images', [...formData.images, result]);
       }
     } catch (error) {
       console.error('Error taking photo:', error);
@@ -122,8 +141,16 @@ export default function TokenizeScreen() {
     }
   };
 
+  const handlePrevious = () => {
+    handleBack();
+  };
+
+  const canProceed = (): boolean => {
+    return validateCurrentStep();
+  };
+
   const handleSubmit = async () => {
-    if (!canTokenizeAssets()) {
+    if (!isDemoMode && !canTokenizeAssets()) {
       Alert.alert(
         'KYC Required', 
         'You need to complete KYC verification before tokenizing assets.',
@@ -135,46 +162,96 @@ export default function TokenizeScreen() {
       return;
     }
 
-    if (!isConnected || !address) {
+    if (!isDemoMode && (!isConnected || !address)) {
       Alert.alert('Wallet Required', 'Please connect your wallet to tokenize assets.');
       return;
     }
 
     try {
-      const tokenizeData: TokenizeAssetData = {
-        title: formData.assetName,
-        description: formData.description,
-        assetType: formData.assetType,
-        estimatedValue: parseFloat(formData.totalValue),
-        imageUris: formData.images,
-        documentUris: formData.documents,
-        location: formData.location,
-      };
+      if (isDemoMode) {
+        // Demo mode tokenization
+        const result = demoDataService.simulateAssetTokenization({
+          title: formData.assetName,
+          description: formData.description,
+          assetType: formData.assetType,
+          estimatedValue: parseFloat(formData.totalValue),
+          minimumInvestment: parseFloat(formData.minimumInvestment) || 1000,
+          expectedROI: parseFloat(formData.expectedROI) || 8.0,
+          duration: parseFloat(formData.duration) || 5,
+          imageUris: formData.images,
+          documentUris: formData.documents,
+          location: formData.location,
+        }, demoAccount?.id || 'demo-user');
 
-      const result = await tokenizeAsset(tokenizeData);
-      
-      if (result.success) {
-        Alert.alert(
-          'Success!', 
-          `Asset successfully tokenized! Token ID: ${result.tokenId}`,
-          [
-            { text: 'OK', onPress: () => {
-              resetStatus();
-              setCurrentStep(0);
-              setFormData({
-                assetType: '',
-                assetName: '',
-                description: '',
-                totalValue: '',
-                location: '',
-                images: [],
-                documents: [],
-              });
-            }}
-          ]
-        );
+        if (result.success) {
+          Alert.alert(
+            'Demo Tokenization Successful!', 
+            `Your asset has been tokenized in demo mode! Token ID: ${result.tokenId}\n\nIn real mode, this would be deployed to the blockchain.`,
+            [
+              { text: 'OK', onPress: () => {
+                setCurrentStep(0);
+                setFormData({
+                  assetType: '',
+                  assetName: '',
+                  description: '',
+                  totalValue: '',
+                  tokenPrice: '',
+                  totalTokens: '',
+                  minimumInvestment: '',
+                  expectedROI: '',
+                  duration: '',
+                  location: '',
+                  images: [],
+                  documents: [],
+                });
+              }}
+            ]
+          );
+        } else {
+          Alert.alert('Demo Tokenization Failed', result.error || 'Unknown error occurred');
+        }
       } else {
-        Alert.alert('Tokenization Failed', result.error || 'Unknown error occurred');
+        // Real tokenization
+        const tokenizeData: TokenizeAssetData = {
+          title: formData.assetName,
+          description: formData.description,
+          assetType: formData.assetType,
+          estimatedValue: parseFloat(formData.totalValue),
+          imageUris: formData.images,
+          documentUris: formData.documents,
+          location: formData.location,
+        };
+
+        const result = await tokenizeAsset(tokenizeData);
+        
+        if (result.success) {
+          Alert.alert(
+            'Success!', 
+            `Asset successfully tokenized! Token ID: ${result.tokenId}`,
+            [
+              { text: 'OK', onPress: () => {
+                resetStatus();
+                setCurrentStep(0);
+                setFormData({
+                  assetType: '',
+                  assetName: '',
+                  description: '',
+                  totalValue: '',
+                  tokenPrice: '',
+                  totalTokens: '',
+                  minimumInvestment: '',
+                  expectedROI: '',
+                  duration: '',
+                  location: '',
+                  images: [],
+                  documents: [],
+                });
+              }}
+            ]
+          );
+        } else {
+          Alert.alert('Tokenization Failed', result.error || 'Unknown error occurred');
+        }
       }
     } catch (error) {
       console.error('Tokenization error:', error);
@@ -363,11 +440,11 @@ export default function TokenizeScreen() {
               </Text>
               
               <View style={styles.uploadGrid}>
-                <TouchableOpacity style={styles.uploadCard}>
+                <TouchableOpacity style={styles.uploadCard} onPress={handleTakePhoto}>
                   <Camera color="#6B7280" size={32} />
                   <Text style={styles.uploadCardText}>Take Photo</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.uploadCard}>
+                <TouchableOpacity style={styles.uploadCard} onPress={handleImagePick}>
                   <Upload color="#6B7280" size={32} />
                   <Text style={styles.uploadCardText}>Upload Images</Text>
                 </TouchableOpacity>
@@ -380,7 +457,7 @@ export default function TokenizeScreen() {
                 Ownership certificates, valuations, legal documentation
               </Text>
               
-              <TouchableOpacity style={styles.documentUpload}>
+              <TouchableOpacity style={styles.documentUpload} onPress={handleDocumentPick}>
                 <FileText color="#1E40AF" size={24} />
                 <View style={styles.documentUploadContent}>
                   <Text style={styles.documentUploadTitle}>Upload Documents</Text>
@@ -398,7 +475,7 @@ export default function TokenizeScreen() {
                 Professional appraisal or valuation report
               </Text>
               
-              <TouchableOpacity style={styles.documentUpload}>
+              <TouchableOpacity style={styles.documentUpload} onPress={handleDocumentPick}>
                 <DollarSign color="#F59E0B" size={24} />
                 <View style={styles.documentUploadContent}>
                   <Text style={styles.documentUploadTitle}>Upload Valuation</Text>

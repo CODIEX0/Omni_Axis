@@ -1,28 +1,36 @@
+import React from 'react';
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Chrome as Home, Search, Plus, Briefcase, User, Users } from 'lucide-react-native';
+import { Chrome as Home, Search, Plus, Briefcase, User, Users, Shield } from 'lucide-react-native';
+import { useAuth } from '../../hooks/useAuth';
+import { DemoModeBanner } from '../../components/DemoModeBanner';
 
 export default function TabLayout() {
+  const { isDemoMode } = useAuth();
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: 'rgba(0, 0, 0, 0.1)',
-          borderTopWidth: 1,
-          height: 88,
-          paddingBottom: 20,
-          paddingTop: 12,
-        },
-        tabBarActiveTintColor: '#1E40AF',
-        tabBarInactiveTintColor: '#6B7280',
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontFamily: 'Inter-Medium',
-          marginTop: 4,
-        },
-      }}
-    >
+    <View style={{ flex: 1 }}>
+      <DemoModeBanner />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopColor: isDemoMode ? '#F59E0B' : 'rgba(0, 0, 0, 0.1)',
+            borderTopWidth: isDemoMode ? 2 : 1,
+            height: 88,
+            paddingBottom: 20,
+            paddingTop: 12,
+          },
+          tabBarActiveTintColor: isDemoMode ? '#F59E0B' : '#1E40AF',
+          tabBarInactiveTintColor: '#6B7280',
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontFamily: 'Inter-Medium',
+            marginTop: 4,
+          },
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
@@ -69,6 +77,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="compliance"
+        options={{
+          title: 'Compliance',
+          tabBarIcon: ({ size, color }) => (
+            <Shield size={size} color={color} strokeWidth={2.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
@@ -77,6 +94,7 @@ export default function TabLayout() {
           ),
         }}
       />
-    </Tabs>
+      </Tabs>
+    </View>
   );
 }

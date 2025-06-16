@@ -1,5 +1,21 @@
 import Constants from 'expo-constants';
-import { Chain } from '@thirdweb-dev/sdk';
+// import { Chain } from '@thirdweb-dev/sdk';
+
+interface Chain {
+  chainId: number;
+  name: string;
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+  rpc: string[];
+  blockExplorers: Array<{
+    name: string;
+    url: string;
+  }>;
+  testnet: boolean;
+}
 
 // Environment variables
 export const ENV = {
@@ -44,13 +60,60 @@ export const SUPPORTED_CHAINS = [POLYGON_MUMBAI];
 
 // Asset Types
 export const ASSET_TYPES = [
-  { value: 'real_estate', label: 'Real Estate' },
-  { value: 'art', label: 'Art & Collectibles' },
-  { value: 'commodity', label: 'Commodities' },
-  { value: 'intellectual_property', label: 'Intellectual Property' },
-  { value: 'equipment', label: 'Equipment & Machinery' },
-  { value: 'vehicle', label: 'Vehicles' },
-  { value: 'other', label: 'Other' },
+  { 
+    id: 'real_estate',
+    value: 'real_estate', 
+    label: 'Real Estate',
+    name: 'Real Estate',
+    description: 'Commercial & residential properties',
+    color: '#1E40AF',
+    icon: 'Building'
+  },
+  { 
+    id: 'art',
+    value: 'art', 
+    label: 'Art & Collectibles',
+    name: 'Art & Collectibles',
+    description: 'Artwork, antiques, and collectibles',
+    color: '#8B5CF6',
+    icon: 'Palette'
+  },
+  { 
+    id: 'commodities',
+    value: 'commodities', 
+    label: 'Commodities',
+    name: 'Commodities',
+    description: 'Precious metals, oil, and raw materials',
+    color: '#F59E0B',
+    icon: 'Zap'
+  },
+  { 
+    id: 'collectibles',
+    value: 'collectibles', 
+    label: 'Collectibles',
+    name: 'Collectibles',
+    description: 'Luxury goods, watches, and rare items',
+    color: '#EF4444',
+    icon: 'Star'
+  },
+  { 
+    id: 'bonds',
+    value: 'bonds', 
+    label: 'Bonds',
+    name: 'Bonds',
+    description: 'Corporate and government bonds',
+    color: '#10B981',
+    icon: 'TrendingUp'
+  },
+  { 
+    id: 'equity',
+    value: 'equity', 
+    label: 'Equity',
+    name: 'Equity',
+    description: 'Private equity and business shares',
+    color: '#6366F1',
+    icon: 'Building'
+  },
 ];
 
 // KYC Status

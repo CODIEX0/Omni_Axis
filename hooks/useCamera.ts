@@ -6,7 +6,7 @@ export interface CameraHook {
   hasPermission: boolean;
   requestPermission: () => Promise<boolean>;
   takePicture: () => Promise<string | null>;
-  cameraRef: React.RefObject<CameraView>;
+  cameraRef: React.RefObject<CameraView | null>;
   isLoading: boolean;
   error: string | null;
 }

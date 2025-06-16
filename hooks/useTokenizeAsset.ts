@@ -37,8 +37,8 @@ export const useTokenizeAsset = () => {
   const { contract: marketplaceContract } = useContract(CONTRACTS.MARKETPLACE);
 
   // Contract functions
-  const { mutateAsync: mintNFT } = useContractWrite(assetTokenContract, 'mintTo');
-  const { mutateAsync: listOnMarketplace } = useContractWrite(marketplaceContract, 'createListing');
+  const { mutateAsync: mintNFT } = useContractWrite(assetTokenContract || undefined, 'mintTo');
+  const { mutateAsync: listOnMarketplace } = useContractWrite(marketplaceContract || undefined, 'createListing');
 
   const [tokenizationStatus, setTokenizationStatus] = useState<TokenizationStatus>({
     step: 'idle',
@@ -81,11 +81,11 @@ export const useTokenizeAsset = () => {
       });
 
       const mintResult = await mintNFT({
-        args: [address, metadataUri],
+        args: [address, metadataUri] as any,
       });
 
       // Extract token ID from transaction receipt
-      const tokenId = mintResult.receipt.events?.find(
+      const tokenId = (mintResult.receipt as any).events?.find(
         (event: any) => event.event === 'Transfer'
       )?.args?.tokenId?.toString();
 
@@ -169,11 +169,11 @@ export const useTokenizeAsset = () => {
             endTimestamp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
             reserved: false,
           }
-        ],
+        ] as any,
       });
 
       // Extract listing ID from transaction receipt
-      const listingId = listingResult.receipt.events?.find(
+      const listingId = (listingResult.receipt as any).events?.find(
         (event: any) => event.event === 'NewListing'
       )?.args?.listingId?.toString();
 
@@ -206,7 +206,7 @@ export const useTokenizeAsset = () => {
 
     try {
       // Buy from marketplace contract
-      const buyResult = await marketplaceContract?.call('buyFromListing', [
+      const buyResult = await (marketplaceContract as any)?.call('buyFromListing', [
         listingId,
         address,
         1,

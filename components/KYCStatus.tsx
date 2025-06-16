@@ -192,11 +192,11 @@ export const KYCStatus: React.FC<KYCStatusProps> = ({
         </TouchableOpacity>
       </LinearGradient>
 
-      {kycData && kycData.complianceFlags.length > 0 && (
+      {kycSession?.complianceFlags && kycSession.complianceFlags.length > 0 && (
         <View style={styles.warningContainer}>
           <AlertCircle size={20} color="#f59e0b" />
           <Text style={styles.warningText}>
-            {kycData.complianceFlags.length} issue(s) need attention
+            {kycSession.complianceFlags.length} issue(s) need attention
           </Text>
         </View>
       )}

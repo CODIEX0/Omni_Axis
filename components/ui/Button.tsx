@@ -1,23 +1,16 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  ActivityIndicator,
-} from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 
 interface ButtonProps {
   title: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  onPress?: () => void;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
+  fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
-  fullWidth?: boolean;
 }
 
 export function Button({
@@ -27,95 +20,90 @@ export function Button({
   size = 'medium',
   disabled = false,
   loading = false,
+  fullWidth = false,
   style,
   textStyle,
-  fullWidth = false,
 }: ButtonProps) {
-  const buttonStyles = [
-    styles.base,
-    styles[variant],
-    styles[size],
-    fullWidth && styles.fullWidth,
-    (disabled || loading) && styles.disabled,
-    style,
-  ];
-
-  const textStyles = [
-    styles.text,
-    styles[`${variant}Text`],
-    styles[`${size}Text`],
-    (disabled || loading) && styles.disabledText,
-    textStyle,
-  ];
-
   return (
     <TouchableOpacity
-      style={buttonStyles}
+      style={[
+        styles.button,
+        styles[variant],
+        styles[size],
+        fullWidth && styles.fullWidth,
+        (disabled || loading) && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === 'primary' ? '#FFFFFF' : '#1E40AF'}
+        <ActivityIndicator 
+          color={variant === 'outline' || variant === 'ghost' ? '#1E40AF' : '#FFFFFF'} 
+          size="small" 
         />
       ) : (
-        <Text style={textStyles}>{title}</Text>
+        <Text
+          style={[
+            styles.text,
+            styles[`${variant}Text`],
+            styles[`${size}Text`],
+            textStyle,
+          ]}
+        >
+          {title}
+        </Text>
       )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
+  button: {
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  fullWidth: {
-    width: '100%',
-  },
+  
   // Variants
   primary: {
     backgroundColor: '#1E40AF',
   },
   secondary: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#6B7280',
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#1E40AF',
   },
   ghost: {
     backgroundColor: 'transparent',
   },
-  danger: {
-    backgroundColor: '#EF4444',
-  },
+  
   // Sizes
   small: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    minHeight: 36,
   },
   medium: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    minHeight: 44,
   },
   large: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
-    minHeight: 52,
   },
+  
+  // States
+  disabled: {
+    opacity: 0.5,
+  },
+  fullWidth: {
+    width: '100%',
+  },
+  
   // Text styles
   text: {
     fontFamily: 'Inter-SemiBold',
@@ -133,9 +121,8 @@ const styles = StyleSheet.create({
   ghostText: {
     color: '#1E40AF',
   },
-  dangerText: {
-    color: '#FFFFFF',
-  },
+  
+  // Text sizes
   smallText: {
     fontSize: 14,
   },
@@ -144,14 +131,5 @@ const styles = StyleSheet.create({
   },
   largeText: {
     fontSize: 18,
-  },
-  // Disabled state
-  disabled: {
-    opacity: 0.5,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  disabledText: {
-    opacity: 0.7,
   },
 });

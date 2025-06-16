@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,121 +11,168 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TrendingUp, TrendingDown, DollarSign, Percent, ChartPie as PieChart, ChartBar as BarChart3, Calendar, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
+import { useAuth } from '../../hooks/useAuth';
+import { portfolioService } from '../../services/portfolioService';
+import { demoDataService } from '../../services/demoDataService';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 
 const { width } = Dimensions.get('window');
 
 export default function PortfolioScreen() {
+  const { user, profile, isDemoMode, demoAccount } = useAuth();
   const [hideBalance, setHideBalance] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
+  const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const portfolioData = {
-    totalValue: 125480.50,
-    totalInvested: 98500.00,
-    totalReturns: 26980.50,
-    returnPercentage: 27.4,
-    change24h: 3.2,
-    changeAmount: 3896.30,
+  useEffect(() => {
+    loadPortfolioData();
+  }, [user, profile, isDemoMode, demoAccount]);
+
+  const loadPortfolioData = async () => {
+    try {
+      setLoading(true);
+      
+      if (isDemoMode && demoAccount) {
+        // Use demo portfolio data from service
+        const demoPortfolio = demoDataService.getDemoPortfolio(demoAccount.id);
+        const demoTransactions = demoDataService.getDemoTransactions(demoAccount.id);
+        
+        setPortfolioData({
+          totalValue: demoPortfolio.totalValue,
+          totalInvested: demoPortfolio.totalInvested,
+          totalReturns: demoPortfolio.totalReturns,
+          returnPercentage: ((demoPortfolio.totalReturns / demoPortfolio.totalInvested) * 100).toFixed(1),
+          change24h: parseFloat(demoPortfolio.change24h),
+          changeAmount: demoPortfolio.changeAmount,
+          holdings: demoPortfolio.assets.map((asset, index) => ({
+            id: index + 1,
+            name: asset.assetTitle,
+            type: asset.assetType,
+            image: `https://images.unsplash.com/photo-${1486406146926 + index}?w=400`,
+            tokens: asset.tokenAmount,
+            tokenPrice: asset.currentValue / asset.tokenAmount,
+            currentValue: asset.currentValue,
+            investedAmount: asset.investedAmount,
+            returnAmount: asset.returns,
+            returnPercentage: asset.returnsPercentage,
+            change24h: Math.random() * 10 - 5, // Random for demo
+            allocation: ((asset.currentValue / demoPortfolio.totalValue) * 100).toFixed(1),
+          })),
+          transactions: demoTransactions.slice(0, 3).map(tx => ({
+            id: tx.id,
+            type: tx.type,
+            asset: tx.assetTitle,
+            tokens: tx.tokenAmount,
+            price: tx.price,
+            total: tx.amount,
+            amount: tx.amount,
+            date: new Date(tx.createdAt).toISOString().split('T')[0],
+            time: new Date(tx.createdAt).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }),
+          })),
+        });
+      } else if (user) {
+        // Load real portfolio data
+        const summary = await portfolioService.getInvestmentSummary(user.id);
+        const portfolio = await portfolioService.getUserPortfolio(user.id);
+        
+        setPortfolioData({
+          totalValue: summary.totalValue,
+          totalInvested: summary.totalInvested,
+          totalReturns: summary.totalReturns,
+          returnPercentage: summary.totalReturns > 0 ? 
+            ((summary.totalReturns / summary.totalInvested) * 100).toFixed(1) : 0,
+          change24h: parseFloat(summary.change24h),
+          changeAmount: summary.changeAmount,
+          holdings: portfolio.assets.map((asset: any, index: number) => ({
+            id: asset.id,
+            name: asset.title,
+            type: asset.asset_type.replace('_', ' ').toUpperCase(),
+            image: asset.image_urls?.[0] || 'https://images.pexels.com/photos/2380794/pexels-photo-2380794.jpeg?auto=compress&cs=tinysrgb&w=400',
+            tokens: 1, // This would come from blockchain data
+            tokenPrice: asset.estimated_value,
+            currentValue: asset.estimated_value,
+            investedAmount: asset.estimated_value * 0.8, // Mock data
+            returnAmount: asset.estimated_value * 0.2, // Mock data
+            returnPercentage: 20, // Mock data
+            change24h: Math.random() * 10 - 5, // Mock data
+            allocation: (asset.estimated_value / summary.totalValue * 100).toFixed(1),
+          })),
+          transactions: portfolio.transactions.slice(0, 3).map((tx: any) => ({
+            id: tx.id,
+            type: tx.transaction_type,
+            asset: tx.assets?.title || 'Unknown Asset',
+            tokens: 1, // Mock data
+            price: tx.amount,
+            total: tx.amount,
+            amount: tx.amount,
+            date: new Date(tx.created_at).toISOString().split('T')[0],
+            time: new Date(tx.created_at).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }),
+          })),
+        });
+      }
+    } catch (error) {
+      console.error('Error loading portfolio data:', error);
+      // Set default empty data
+      setPortfolioData({
+        totalValue: 0,
+        totalInvested: 0,
+        totalReturns: 0,
+        returnPercentage: 0,
+        change24h: 0,
+        changeAmount: 0,
+        holdings: [],
+        transactions: [],
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return <LoadingSpinner message="Loading portfolio..." />;
+  }
+
+  if (!portfolioData) {
+    return <LoadingSpinner message="Loading portfolio..." />;
+  }
 
   const periods = ['1D', '1W', '1M', '3M', '1Y', 'All'];
 
-  const holdings = [
-    {
-      id: 1,
-      name: 'Manhattan Office Building',
-      type: 'Real Estate',
-      image: 'https://images.pexels.com/photos/2380794/pexels-photo-2380794.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tokens: 120,
-      tokenPrice: 125.50,
-      currentValue: 15060.00,
-      investedAmount: 12000.00,
-      returnAmount: 3060.00,
-      returnPercentage: 25.5,
-      change24h: 2.3,
-      
-      allocation: 12.0,
-    },
-    {
-      id: 2,
-      name: 'Contemporary Art Collection',
-      type: 'Art & Collectibles',
-      image: 'https://images.pexels.com/photos/1572386/pexels-photo-1572386.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tokens: 85,
-      tokenPrice: 89.75,
-      currentValue: 7628.75,
-      investedAmount: 6800.00,
-      returnAmount: 828.75,
-      returnPercentage: 12.2,
-      change24h: 5.7,
-      allocation: 6.1,
-    },
-    {
-      id: 3,
-      name: 'Gold Mining Rights',
-      type: 'Commodities',
-      image: 'https://images.pexels.com/photos/844124/pexels-photo-844124.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tokens: 200,
-      tokenPrice: 58.20,
-      currentValue: 11640.00,
-      investedAmount: 12000.00,
-      returnAmount: -360.00,
-      returnPercentage: -3.0,
-      change24h: -1.2,
-      allocation: 9.3,
-    },
-    {
-      id: 4,
-      name: 'Luxury Watch Collection',
-      type: 'Luxury Goods',
-      image: 'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=400',
-      tokens: 45,
-      tokenPrice: 72.80,
-      currentValue: 3276.00,
-      investedAmount: 2925.00,
-      returnAmount: 351.00,
-      returnPercentage: 12.0,
-      change24h: 8.1,
-      allocation: 2.6,
-    },
-  ];
+  // Calculate allocation data from holdings
+  const allocationData = portfolioData.holdings.reduce((acc: any[], holding: any) => {
+    const existingCategory = acc.find(item => item.category === holding.type);
+    if (existingCategory) {
+      existingCategory.percentage += parseFloat(holding.allocation);
+    } else {
+      acc.push({
+        category: holding.type,
+        percentage: parseFloat(holding.allocation),
+        color: getColorForCategory(holding.type),
+      });
+    }
+    return acc;
+  }, []);
 
-  const transactions = [
-    {
-      id: 1,
-      type: 'buy',
-      asset: 'Manhattan Office Building',
-      tokens: 50,
-      price: 125.50,
-      total: 6275.00,
-      date: '2024-01-15',
-      time: '14:30',
-    },
-    {
-      id: 2,
-      type: 'dividend',
-      asset: 'Art Collection #247',
-      amount: 125.50,
-      date: '2024-01-14',
-      time: '09:00',
-    },
-    {
-      id: 3,
-      type: 'sell',
-      asset: 'Gold Mining Rights',
-      tokens: 25,
-      price: 60.00,
-      total: 1500.00,
-      date: '2024-01-12',
-      time: '16:45',
-    },
-  ];
-
-  const allocationData = [
-    { category: 'Real Estate', percentage: 45.2, color: '#1E40AF' },
-    { category: 'Art & Collectibles', percentage: 28.7, color: '#8B5CF6' },
-    { category: 'Commodities', percentage: 18.3, color: '#F59E0B' },
-    { category: 'Luxury Goods', percentage: 7.8, color: '#EF4444' },
-  ];
+  function getColorForCategory(category: string): string {
+    const colors: { [key: string]: string } = {
+      'Real Estate': '#1E40AF',
+      'REAL_ESTATE': '#1E40AF',
+      'Art & Collectibles': '#8B5CF6',
+      'ART': '#8B5CF6',
+      'Commodities': '#F59E0B',
+      'COMMODITIES': '#F59E0B',
+      'Luxury Goods': '#EF4444',
+      'COLLECTIBLES': '#EF4444',
+    };
+    return colors[category] || '#6B7280';
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -135,7 +182,7 @@ export default function PortfolioScreen() {
           <Text style={styles.title}>Portfolio</Text>
           <TouchableOpacity onPress={() => setHideBalance(!hideBalance)}>
             {hideBalance ? (
-              <EyeOff color="#1F2937\" size={24} />
+              <EyeOff color="#1F2937" size={24} />
             ) : (
               <Eye color="#1F2937" size={24} />
             )}
@@ -224,7 +271,7 @@ export default function PortfolioScreen() {
             </View>
             
             <View style={styles.allocationLegend}>
-              {allocationData.map((item, index) => (
+              {allocationData.map((item: any, index: number) => (
                 <View key={index} style={styles.legendItem}>
                   <View style={[styles.legendColor, { backgroundColor: item.color }]} />
                   <View style={styles.legendContent}>
@@ -242,7 +289,7 @@ export default function PortfolioScreen() {
           <Text style={styles.sectionTitle}>Your Holdings</Text>
           
           <View style={styles.holdingsContainer}>
-            {holdings.map((holding) => (
+            {portfolioData.holdings.map((holding: any) => (
               <TouchableOpacity key={holding.id} style={styles.holdingCard}>
                 <Image source={{ uri: holding.image }} style={styles.holdingImage} />
                 
@@ -262,7 +309,7 @@ export default function PortfolioScreen() {
                   </Text>
                   <View style={styles.holdingReturn}>
                     {holding.returnPercentage >= 0 ? (
-                      <TrendingUp color="#10B981\" size={12} />
+                      <TrendingUp color="#10B981" size={12} />
                     ) : (
                       <TrendingDown color="#EF4444" size={12} />
                     )}
@@ -294,7 +341,7 @@ export default function PortfolioScreen() {
           </View>
           
           <View style={styles.transactionsContainer}>
-            {transactions.map((transaction) => (
+            {portfolioData.transactions.map((transaction: any) => (
               <TouchableOpacity key={transaction.id} style={styles.transactionItem}>
                 <View style={[
                   styles.transactionIcon,
@@ -305,7 +352,7 @@ export default function PortfolioScreen() {
                   }
                 ]}>
                   {transaction.type === 'buy' ? (
-                    <TrendingUp color="#FFFFFF\" size={16} />
+                    <TrendingUp color="#FFFFFF" size={16} />
                   ) : transaction.type === 'sell' ? (
                     <TrendingDown color="#FFFFFF" size={16} />
                   ) : (
@@ -327,8 +374,8 @@ export default function PortfolioScreen() {
                 
                 <Text style={styles.transactionAmount}>
                   {transaction.type === 'dividend' ? 
-                    `+$${transaction.amount}` :
-                    `$${transaction.total?.toLocaleString()}`
+                    `+${transaction.amount}` :
+                    `${transaction.total?.toLocaleString()}`
                   }
                 </Text>
               </TouchableOpacity>

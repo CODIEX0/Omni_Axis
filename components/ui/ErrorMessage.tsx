@@ -1,43 +1,26 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TouchableOpacity,
-} from 'react-native';
-import { CircleAlert as AlertCircle, RefreshCw } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { AlertTriangle, RefreshCw } from 'lucide-react-native';
 
 interface ErrorMessageProps {
   message: string;
   onRetry?: () => void;
-  style?: ViewStyle;
-  variant?: 'default' | 'inline' | 'card';
+  retryText?: string;
 }
 
-export function ErrorMessage({
-  message,
-  onRetry,
-  style,
-  variant = 'default',
+export function ErrorMessage({ 
+  message, 
+  onRetry, 
+  retryText = 'Try Again' 
 }: ErrorMessageProps) {
-  const containerStyles = [
-    styles.container,
-    styles[variant],
-    style,
-  ];
-
   return (
-    <View style={containerStyles}>
-      <View style={styles.content}>
-        <AlertCircle color="#EF4444" size={24} />
-        <Text style={styles.message}>{message}</Text>
-      </View>
-      
+    <View style={styles.container}>
+      <AlertTriangle color="#EF4444" size={48} />
+      <Text style={styles.message}>{message}</Text>
       {onRetry && (
         <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
           <RefreshCw color="#1E40AF" size={16} />
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{retryText}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -46,58 +29,33 @@ export function ErrorMessage({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    padding: 16,
-  },
-  default: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  inline: {
-    backgroundColor: 'transparent',
-    padding: 8,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  content: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    padding: 20,
   },
   message: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#DC2626',
-    marginLeft: 8,
-    flex: 1,
+    color: '#6B7280',
     textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
   },
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F7FF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#EBF4FF',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#1E40AF',
   },
   retryText: {
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inter-SemiBold',
     color: '#1E40AF',
-    marginLeft: 4,
+    marginLeft: 8,
   },
 });

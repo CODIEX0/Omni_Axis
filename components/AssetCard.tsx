@@ -99,7 +99,7 @@ export function AssetCard({ asset, onPress, variant = 'default' }: AssetCardProp
   }
 
   return (
-    <Card onPress={onPress} style={[styles.card, { width: cardWidth }]} variant="elevated">
+    <Card onPress={onPress} style={[styles.card, { width: cardWidth }] as any} variant="elevated">
       <View style={styles.imageContainer}>
         <Image source={{ uri: asset.image }} style={styles.image} />
         

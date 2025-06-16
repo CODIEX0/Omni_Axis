@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,40 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { User, Settings, Shield, Bell, CircleHelp as HelpCircle, FileText, LogOut, ChevronRight, Star, Wallet, Globe, Moon, Smartphone, CreditCard, Lock, Eye, Download } from 'lucide-react-native';
+import { User, Settings, Shield, Bell, CircleHelp as HelpCircle, FileText, LogOut, ChevronRight, Star, Wallet, Globe, Moon, Smartphone, CreditCard, Lock, Eye, Download, TestTube, Database } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { KYCStatus } from '../../components/KYCStatus';
+import { portfolioService } from '../../services/portfolioService';
+import { DemoModeToggle } from '../../components/DemoModeToggle';
 
 export default function ProfileScreen() {
-  const { user, isDemoMode, demoAccount, signOut } = useAuth();
+  const { user, profile, isDemoMode, demoAccount, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const [realUserPortfolio, setRealUserPortfolio] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [showDemoToggle, setShowDemoToggle] = useState(false);
+
+  // Load real user portfolio data
+  useEffect(() => {
+    const loadRealUserData = async () => {
+      if (!isDemoMode && user?.id) {
+        setLoading(true);
+        try {
+          const portfolioData = await portfolioService.getUserPortfolio(user.id);
+          setRealUserPortfolio(portfolioData);
+        } catch (error) {
+          console.error('Error loading user portfolio:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadRealUserData();
+  }, [user, isDemoMode]);
 
   const getUserProfile = () => {
     if (isDemoMode && demoAccount) {
@@ -36,31 +60,26 @@ export default function ProfileScreen() {
       };
     }
     
+    // Real user data
+    const userName = profile?.full_name || user?.email?.split('@')[0] || 'User';
+    const memberSince = user?.created_at ? 
+      new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 
+      'Recently';
+    
     return {
-      name: user?.email || 'User',
+      name: userName,
       email: user?.email || '',
-      memberSince: 'Recently',
-      kycStatus: 'Pending',
-      totalInvestments: 0,
-      portfolioAssets: 0,
-      avatar: 'https://ui-avatars.com/api/?name=User&background=2196F3&color=fff',
-      role: 'user',
+      memberSince,
+      kycStatus: profile?.kyc_status === 'approved' ? 'Verified' : 
+                 profile?.kyc_status === 'pending' ? 'Pending' : 'Not Started',
+      totalInvestments: realUserPortfolio?.totalInvestments || 0,
+      portfolioAssets: realUserPortfolio?.portfolioAssets || 0,
+      avatar: profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=2196F3&color=fff`,
+      role: profile?.role || 'investor',
     };
   };
 
   const userProfile = getUserProfile();
-
-  const { user } = useAuth();
-
-  const userProfile = {
-    name: user?.name || 'John Doe',
-    email: user?.email || 'john.doe@example.com',
-    memberSince: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'January 2024',
-    kycStatus: user?.kycStatus || 'Verified',
-    totalInvestments: 125480.50,
-    portfolioAssets: 12,
-    avatar: user?.avatar || 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
-  };
 
   const menuSections = [
     {
@@ -113,6 +132,17 @@ export default function ProfileScreen() {
           onToggle: setDarkModeEnabled
         },
         { icon: Globe, label: 'Language', action: () => {}, value: 'English' },
+      ]
+    },
+    {
+      title: 'App Mode',
+      items: [
+        { 
+          icon: isDemoMode ? TestTube : Database, 
+          label: isDemoMode ? 'Demo Mode Active' : 'Real Data Mode', 
+          action: () => setShowDemoToggle(true),
+          badge: isDemoMode ? 'DEMO' : 'LIVE'
+        },
       ]
     },
     {
@@ -200,20 +230,26 @@ export default function ProfileScreen() {
           <View style={styles.statsContainer}>
             <View style={styles.stat}>
               <Text style={styles.statValue}>
-                ${userProfile.totalInvestments.toLocaleString()}
+                {loading && !isDemoMode ? '...' : `${userProfile.totalInvestments.toLocaleString()}`}
               </Text>
               <Text style={styles.statLabel}>Total Invested</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{userProfile.portfolioAssets}</Text>
+              <Text style={styles.statValue}>
+                {loading && !isDemoMode ? '...' : userProfile.portfolioAssets}
+              </Text>
               <Text style={styles.statLabel}>Assets</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <View style={styles.verificationBadge}>
+              <View style={[
+                styles.verificationBadge,
+                { backgroundColor: userProfile.kycStatus === 'Verified' ? '#10B981' : 
+                                  userProfile.kycStatus === 'Pending' ? '#F59E0B' : '#EF4444' }
+              ]}>
                 <Star color="#FFFFFF" size={12} fill="#FFFFFF" />
-                <Text style={styles.verificationText}>Verified</Text>
+                <Text style={styles.verificationText}>{userProfile.kycStatus}</Text>
               </View>
               <Text style={styles.statLabel}>KYC Status</Text>
             </View>
@@ -251,6 +287,12 @@ export default function ProfileScreen() {
           <Text style={styles.appVersion}>Omni Axis v1.0.0</Text>
         </View>
       </ScrollView>
+
+      {/* Demo Mode Toggle */}
+      <DemoModeToggle 
+        visible={showDemoToggle}
+        onClose={() => setShowDemoToggle(false)}
+      />
     </SafeAreaView>
   );
 }

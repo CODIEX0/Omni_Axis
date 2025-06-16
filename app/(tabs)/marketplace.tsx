@@ -24,26 +24,23 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
-import { useTokenizeAsset } from '../../hooks/useTokenizeAsset';
 import { useWalletConnection } from '../../hooks/useWallet';
 import { useAuth } from '../../hooks/useAuth';
-import { Asset } from '../../services/supabase';
-import { AssetCard } from '../../components/AssetCard';
+import { userDataService } from '../../services/userDataService';
+import { demoDataService } from '../../services/demoDataService';
 import { WalletConnector } from '../../components/WalletConnector';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ASSET_TYPES, COLORS, SPACING, FONT_SIZES } from '../../constants';
-import { isLoading } from 'expo-font';
 
 export default function MarketplaceScreen() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isDemoMode, demoAccount } = useAuth();
   const { isConnected } = useWalletConnection();
-  const { getMarketplaceAssets, buyAsset } = useTokenizeAsset();
   
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [filteredAssets, setFilteredAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +49,7 @@ export default function MarketplaceScreen() {
 
   useEffect(() => {
     loadAssets();
-  }, []);
+  }, [isDemoMode, demoAccount, user]);
 
   useEffect(() => {
     applyFilters();
@@ -61,8 +58,34 @@ export default function MarketplaceScreen() {
   const loadAssets = async () => {
     try {
       setLoading(true);
-      const marketplaceAssets = await getMarketplaceAssets();
-      setAssets(marketplaceAssets);
+      
+      if (isDemoMode && demoAccount) {
+        // Use demo marketplace assets
+        const demoAssets = demoDataService.getDemoAssets().map(asset => ({
+          id: asset.id,
+          title: asset.title,
+          description: asset.description,
+          asset_type: asset.assetType,
+          estimated_value: asset.estimatedValue,
+          listing_price: asset.listingPrice,
+          token_id: asset.tokenId,
+          status: asset.status,
+          available_tokens: asset.availableTokens,
+          total_tokens: asset.totalTokens,
+          minimum_investment: asset.minimumInvestment,
+          expected_roi: asset.expectedROI,
+          owner_name: asset.ownerName,
+          image_urls: asset.imageUrls,
+          location: asset.location,
+          features: asset.features,
+          risk_level: asset.riskLevel,
+        }));
+        setAssets(demoAssets);
+      } else {
+        // Load real marketplace assets
+        const marketplaceAssets = await userDataService.getMarketplaceAssets();
+        setAssets(marketplaceAssets);
+      }
     } catch (error) {
       console.error('Error loading assets:', error);
       Alert.alert('Error', 'Failed to load marketplace assets');
@@ -97,7 +120,7 @@ export default function MarketplaceScreen() {
     setFilteredAssets(filtered);
   };
 
-  const handleBuyAsset = async (asset: Asset) => {
+  const handleBuyAsset = async (asset: any) => {
     if (!isConnected) {
       Alert.alert('Wallet Required', 'Please connect your wallet to purchase assets.');
       return;
@@ -122,9 +145,26 @@ export default function MarketplaceScreen() {
           text: 'Buy Now',
           onPress: async () => {
             try {
-              // This would need the listing ID from the marketplace contract
-              // For now, we'll show a placeholder
-              Alert.alert('Purchase Initiated', 'Your purchase request has been submitted.');
+              if (isDemoMode) {
+                // Simulate demo purchase
+                const result = demoDataService.simulateAssetPurchase(
+                  asset.id, 
+                  Math.ceil(asset.minimum_investment / asset.listing_price), 
+                  demoAccount?.id || 'demo-user'
+                );
+                
+                if (result.success) {
+                  Alert.alert(
+                    'Purchase Successful!', 
+                    `You have successfully purchased tokens for ${asset.title}. Transaction ID: ${result.transaction?.txHash?.substring(0, 10)}...`
+                  );
+                } else {
+                  Alert.alert('Purchase Failed', result.error || 'Unknown error');
+                }
+              } else {
+                // Real blockchain purchase would go here
+                Alert.alert('Purchase Initiated', 'Your purchase request has been submitted.');
+              }
             } catch (error) {
               console.error('Error buying asset:', error);
               Alert.alert('Error', 'Failed to purchase asset');
@@ -135,7 +175,7 @@ export default function MarketplaceScreen() {
     );
   };
 
-  const renderAssetItem = ({ item }: { item: Asset }) => (
+  const renderAssetItem = ({ item }: { item: any }) => (
     <Card style={styles.assetCard}>
       <View style={styles.assetHeader}>
         <View>

@@ -19,9 +19,9 @@ export const supportedWallets = [
 // Thirdweb Provider Props
 export const thirdwebConfig = {
   clientId: ENV.THIRDWEB_CLIENT_ID,
-  activeChain: POLYGON_MUMBAI,
+  activeChain: POLYGON_MUMBAI as any,
   supportedWallets,
-  supportedChains: [POLYGON_MUMBAI],
+  supportedChains: [POLYGON_MUMBAI] as any,
   dAppMeta: {
     name: 'Omni Axis',
     description: 'Real World Asset Tokenization Platform',
