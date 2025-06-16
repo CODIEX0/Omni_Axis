@@ -263,7 +263,7 @@ export default function ProfileScreen() {
   };
 
   const renderMenuItem = (item: any, index: number) => {
-    // Special handling for language selector
+    // Handle custom language selector component
     if (item.customComponent && item.label === 'Language') {
       return (
         <View key={index} style={styles.menuItem}>
@@ -271,13 +271,12 @@ export default function ProfileScreen() {
             <View style={styles.menuItemIcon}>
               <item.icon color="#6B7280" size={20} />
             </View>
-            <Text style={[styles.menuItemLabel, { fontSize: 16 * accessibility.fontSizeMultiplier }]}>
-              {item.label}
-            </Text>
+            <Text style={styles.menuItemLabel}>{item.label}</Text>
           </View>
           <View style={styles.menuItemRight}>
-            <LanguageSelector 
-              compact={true} 
+            <LanguageSelector
+              style={styles.languageSelector}
+              compact={true}
               onLanguageChange={(language) => {
                 accessibility.hapticFeedback('light');
                 accessibility.announceForAccessibility(`Language changed to ${language}`);
@@ -289,16 +288,33 @@ export default function ProfileScreen() {
     }
 
     return (
-      <TouchableOpacity key={index} style={styles.menuItem} onPress={item.action}>
+      <TouchableOpacity 
+        key={index} 
+        style={[
+          styles.menuItem,
+          { backgroundColor: accessibility.theme.surface }
+        ]} 
+        onPress={item.action}
+        accessibilityLabel={item.label}
+        accessibilityValue={item.value ? { text: item.value } : undefined}
+      >
         <View style={styles.menuItemLeft}>
           <View style={styles.menuItemIcon}>
-            <item.icon color="#6B7280" size={20} />
+            <item.icon color={accessibility.theme.textSecondary} size={20} />
           </View>
-          <Text style={[styles.menuItemLabel, { fontSize: 16 * accessibility.fontSizeMultiplier }]}>
+          <Text 
+            style={[
+              styles.menuItemLabel,
+              { 
+                color: accessibility.theme.text,
+                fontSize: 16 * accessibility.fontSizeMultiplier
+              }
+            ]}
+          >
             {item.label}
           </Text>
           {item.badge && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: accessibility.theme.primary }]}>
               <Text style={[styles.badgeText, { fontSize: 12 * accessibility.fontSizeMultiplier }]}>
                 {item.badge}
               </Text>
@@ -310,19 +326,28 @@ export default function ProfileScreen() {
           {item.toggle ? (
             <Switch
               value={item.value}
-              onValueChange={async (newValue) => {
-                await item.onToggle(newValue);
+              onValueChange={async (value) => {
+                await item.onToggle(value);
                 await accessibility.hapticFeedback('light');
               }}
-              trackColor={{ false: '#E5E7EB', true: '#1E40AF' }}
+              trackColor={{ false: '#E5E7EB', true: accessibility.theme.primary }}
               thumbColor={item.value ? '#FFFFFF' : '#FFFFFF'}
+              accessibilityLabel={`Toggle ${item.label}`}
             />
           ) : item.value ? (
-            <Text style={[styles.menuItemValue, { fontSize: 14 * accessibility.fontSizeMultiplier }]}>
+            <Text 
+              style={[
+                styles.menuItemValue,
+                { 
+                  color: accessibility.theme.textSecondary,
+                  fontSize: 14 * accessibility.fontSizeMultiplier
+                }
+              ]}
+            >
               {item.value}
             </Text>
           ) : (
-            <ChevronRight color="#9CA3AF" size={16} />
+            <ChevronRight color={accessibility.theme.textSecondary} size={16} />
           )}
         </View>
       </TouchableOpacity>
@@ -425,32 +450,41 @@ export default function ProfileScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAccessibilitySettings(false)}
       >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: accessibility.theme.background }]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: accessibility.theme.background }}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { 
-              fontSize: 20 * accessibility.fontSizeMultiplier,
-              color: accessibility.theme.text 
-            }]}>
+            <Text 
+              style={[
+                styles.modalTitle,
+                { 
+                  color: accessibility.theme.text,
+                  fontSize: 20 * accessibility.fontSizeMultiplier
+                }
+              ]}
+            >
               Accessibility Settings
             </Text>
-            <TouchableOpacity 
-              onPress={() => {
-                setShowAccessibilitySettings(false);
-                accessibility.hapticFeedback('light');
-              }}
+            <TouchableOpacity
+              onPress={() => setShowAccessibilitySettings(false)}
               style={styles.modalCloseButton}
+              accessibilityLabel="Close accessibility settings"
             >
-              <Text style={[styles.modalCloseText, { 
-                fontSize: 16 * accessibility.fontSizeMultiplier,
-                color: accessibility.theme.primary 
-              }]}>
+              <Text 
+                style={[
+                  styles.modalCloseText,
+                  { 
+                    color: accessibility.theme.primary,
+                    fontSize: 16 * accessibility.fontSizeMultiplier
+                  }
+                ]}
+              >
                 Done
               </Text>
             </TouchableOpacity>
           </View>
-          <AccessibilitySettingsComponent 
+          <AccessibilitySettingsComponent
             onSettingsChange={(settings) => {
-              console.log('Accessibility settings changed:', settings);
+              // Settings are automatically saved by the component
+              accessibility.hapticFeedback('success');
             }}
           />
         </SafeAreaView>
@@ -622,28 +656,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitle: {
-    fontFamily: 'Inter-SemiBold',
-  },
-  modalCloseButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  modalCloseText: {
-    fontFamily: 'Inter-SemiBold',
+    marginRight: 8,
   },
   menuItemDivider: {
     height: 1,
@@ -677,5 +690,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontFamily: 'Inter-SemiBold',
+  },
+  modalCloseButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalCloseText: {
+    fontFamily: 'Inter-SemiBold',
+  },
+  languageSelector: {
+    minWidth: 80,
   },
 });
