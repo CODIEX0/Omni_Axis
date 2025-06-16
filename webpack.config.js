@@ -1,46 +1,71 @@
+/**
+ * Webpack Configuration for Web3 and Crypto Libraries
+ * Fixes module resolution issues for blockchain-related packages
+ */
+
 const createExpoWebpackConfigAsync = require('@expo/webpack-config');
 
 module.exports = async function (env, argv) {
   const config = await createExpoWebpackConfigAsync(env, argv);
 
-  // Add polyfills for Node.js modules
+  // Add fallbacks for Node.js modules
   config.resolve.fallback = {
     ...config.resolve.fallback,
-    crypto: require.resolve('crypto-browserify'),
+    crypto: require.resolve('expo-crypto'),
     stream: require.resolve('stream-browserify'),
-    buffer: require.resolve('@craftzdog/react-native-buffer'),
-    process: require.resolve('process/browser'),
+    buffer: require.resolve('buffer'),
     util: require.resolve('util'),
-    assert: require.resolve('assert'),
     url: require.resolve('url'),
-    os: require.resolve('os-browserify/browser'),
-    https: require.resolve('https-browserify'),
-    http: require.resolve('stream-http'),
-    vm: require.resolve('vm-browserify'),
-    zlib: require.resolve('browserify-zlib'),
-    path: require.resolve('path-browserify'),
-    fs: false,
-    net: false,
-    tls: false,
+    assert: require.resolve('assert'),
   };
 
   // Add aliases for problematic modules
   config.resolve.alias = {
     ...config.resolve.alias,
-    '@noble/hashes/crypto': require.resolve('@noble/hashes/crypto'),
-    'uint8arrays/concat': require.resolve('uint8arrays/concat'),
-    'uint8arrays/to-string': require.resolve('uint8arrays/to-string'),
-    'uint8arrays/from-string': require.resolve('uint8arrays/from-string'),
-    'uint8arrays/equals': require.resolve('uint8arrays/equals'),
-    'multiformats/basics': require.resolve('multiformats/basics'),
+    'react-native$': 'react-native-web',
+    '@noble/hashes/crypto': '@noble/hashes/crypto',
+    'uint8arrays/concat': 'uint8arrays/src/concat',
+    'uint8arrays/to-string': 'uint8arrays/src/to-string',
+    'uint8arrays/from-string': 'uint8arrays/src/from-string',
+    'uint8arrays/equals': 'uint8arrays/src/equals',
+    'multiformats/basics': 'multiformats/src/basics',
   };
 
-  // Handle module resolution for CommonJS modules
-  config.resolve.extensionAlias = {
-    '.js': ['.js', '.ts', '.tsx'],
-    '.mjs': ['.mjs', '.ts', '.tsx'],
-    '.cjs': ['.cjs', '.ts', '.tsx'],
-  };
+  // Add plugins for better compatibility
+  if (!config.plugins) {
+    config.plugins = [];
+  }
+
+  config.plugins.push(
+    new (require('webpack')).ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process/browser',
+    })
+  );
+
+  // Configure module rules for better ES6+ support
+  config.module.rules.push({
+    test: /\.m?js$/,
+    resolve: {
+      fullySpecified: false,
+    },
+  });
+
+  // Fix for @noble/hashes and other crypto libraries
+  config.module.rules.push({
+    test: /node_modules\/@noble\/hashes/,
+    type: 'javascript/auto',
+  });
+
+  config.module.rules.push({
+    test: /node_modules\/uint8arrays/,
+    type: 'javascript/auto',
+  });
+
+  config.module.rules.push({
+    test: /node_modules\/multiformats/,
+    type: 'javascript/auto',
+  });
 
   return config;
 };

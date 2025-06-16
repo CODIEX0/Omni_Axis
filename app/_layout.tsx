@@ -1,7 +1,5 @@
-// Import polyfills first - MUST be at the top
-import '../polyfills';
-import 'react-native-get-random-values';
-import 'react-native-url-polyfill/auto';
+// Initialize polyfills first
+import '../utils/polyfills';
 
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
@@ -23,6 +21,10 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { ThirdwebProviderWrapper } from '../services/thirdweb';
 import Toast from 'react-native-toast-message';
 import '../i18n';
+
+// Import polyfills for React Native
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
 
 SplashScreen.preventAutoHideAsync();
 
