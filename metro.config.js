@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
@@ -14,7 +15,7 @@ config.resolver.alias = {
   ...config.resolver.alias,
   'crypto': require.resolve('expo-crypto'),
   'stream': require.resolve('stream-browserify'),
-  'buffer': require.resolve('buffer'),
+  'buffer': require.resolve('buffer/')
 };
 
 // Configure transformer for better ES6+ support
@@ -79,4 +80,22 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
-module.exports = config;
+  // Consolidate extraNodeModules
+    config.resolver.extraNodeModules = {
+      ...config.resolver.extraNodeModules,
+      // Polyfills from earlier in your config
+      stream: require.resolve('stream-browserify'), // Already aliased
+      crypto: require.resolve('crypto-browserify'), // Already aliased
+      http: require.resolve('http-browserify'), // Consider if this or the mock is preferred
+      // Mock out Node.js core modules that are not available in React Native
+      // This is a workaround for libraries that incorrectly bundle server-side code
+      // or rely on Node.js APIs in a client environment.
+      https: path.resolve(__dirname, 'mocks/https.js'),
+      http: path.resolve(__dirname, 'mocks/http.js'),
+      net: path.resolve(__dirname, 'mocks/net.js'),
+      tls: path.resolve(__dirname, 'mocks/tls.js'),
+      zlib: path.resolve(__dirname, 'mocks/zlib.js'),      
+      fs: path.resolve(__dirname, 'mocks/fs.js'),
+      path: require.resolve('path-browserify'), // Use browser polyfill for path
+    };
+  module.exports = config;

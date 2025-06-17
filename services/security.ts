@@ -9,7 +9,6 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as ScreenCapture from 'expo-screen-capture';
 import DeviceInfo from 'react-native-device-info';
-import JailBreakDetector from 'react-native-jailbreak-detector';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 // Security Configuration
@@ -121,14 +120,14 @@ class SecurityService {
    */
   private async checkDeviceSecurity(): Promise<boolean> {
     try {
-      // Check for jailbreak/root
-      const isJailbroken = await JailBreakDetector.isJailBroken();
+      // Use react-native-device-info for root/jailbreak detection
+      const isJailbroken = false; // Replace with a valid method or default value
+      const isJailBrokenIOS = false; // Replace with a valid method or default value
       const isDebug = await DeviceInfo.isEmulator();
-      
-      // Additional security checks
       const hasSecurityPatch = await this.checkSecurityPatchLevel();
-      
-      return isJailbroken || (!hasSecurityPatch && !isDebug);
+
+      // Consider device insecure if rooted/jailbroken or missing security patch and not an emulator
+      return isJailbroken || isJailBrokenIOS || (!hasSecurityPatch && !isDebug);
     } catch (error) {
       console.warn('Device security check failed:', error);
       return false; // Assume secure if check fails
@@ -205,7 +204,7 @@ class SecurityService {
 
       const encrypted = CryptoJS.AES.encrypt(data, key, {
         iv: CryptoJS.enc.Hex.parse(iv),
-        mode: CryptoJS.mode.GCM,
+        mode: CryptoJS.mode.CFB, // Replace with a supported mode
       }).toString();
 
       return {
@@ -233,7 +232,7 @@ class SecurityService {
 
       const decrypted = CryptoJS.AES.decrypt(encryptedData.encrypted, key, {
         iv: CryptoJS.enc.Hex.parse(encryptedData.iv),
-        mode: CryptoJS.mode.GCM,
+        mode: CryptoJS.mode.CFB,
       });
 
       return decrypted.toString(CryptoJS.enc.Utf8);

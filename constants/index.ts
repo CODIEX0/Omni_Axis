@@ -20,12 +20,12 @@ interface Chain {
 // Environment variables
 export const ENV = {
   API_URL: Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'https://api.omniaxis.com',
-  THIRDWEB_CLIENT_ID: Constants.expoConfig?.extra?.EXPO_PUBLIC_THIRDWEB_CLIENT_ID || '',
-  THIRDWEB_SECRET_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_THIRDWEB_SECRET_KEY || '',
-  SUPABASE_URL: Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || '',
-  SUPABASE_ANON_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
-  PINATA_API_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_PINATA_API_KEY || '',
-  PINATA_SECRET_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_PINATA_SECRET_KEY || '',
+  THIRDWEB_CLIENT_ID: Constants.expoConfig?.extra?.EXPO_PUBLIC_THIRDWEB_CLIENT_ID || '5500bc58013187faab5e562881e117b4',
+  THIRDWEB_SECRET_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_THIRDWEB_SECRET_KEY || 'o5AvaQTd6vjNOLNoKOug0hvIvek0wArDulnyxNbNAP8ugNYXkvsrd9FAmXehiQ7hLg7CSc2T-bWz1n8egwXuaQ',
+  SUPABASE_URL: Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || 'https://frdiliqbwdvckwbabfzn.supabase.co',
+  SUPABASE_ANON_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyZGlsaXFid2R2Y2t3YmFiZnpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwNzY0NjYsImV4cCI6MjA2NTY1MjQ2Nn0.jRCuBieJd2TnDZ3yIjLQVclGRbPFoWZCiWzj1oZVetg',
+  PINATA_API_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_PINATA_API_KEY || 'https://gateway.pinata.cloud/ipfs',
+  PINATA_SECRET_KEY: Constants.expoConfig?.extra?.EXPO_PUBLIC_PINATA_SECRET_KEY || 'ea6f04e57ef5c5c3d7fa4296d6f4e8c0ba5eb74903e803b2484fe267a87cdedd',
   IPFS_GATEWAY_URL: Constants.expoConfig?.extra?.EXPO_PUBLIC_IPFS_GATEWAY_URL || 'https://gateway.pinata.cloud/ipfs',
 };
 
