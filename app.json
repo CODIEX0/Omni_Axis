@@ -4,10 +4,10 @@
     "slug": "omni-axis",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/.png",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/.png"
+      "image": "./assets/images/icon.png"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#1E40AF"
       },
       "package": "com.omniaxis.app"
