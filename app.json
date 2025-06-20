@@ -24,7 +24,7 @@
       "package": "com.omniaxis.app"
     },
     "web": {
-      "favicon": "./assets/images/.png",
+      "favicon": "./assets/images/favicon.png",
       "bundler": "metro",
       "build": {
         "babel": {
